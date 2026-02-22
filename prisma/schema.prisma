@@ -22,6 +22,10 @@ enum JobStatus {
   OFFER
   REJECTED
 }
+enum VersionType {
+  BASE
+  TAILORED
+}
 
 model User {
   id             String            @id @default(uuid())
@@ -59,17 +63,20 @@ model ResumeVersion {
   userId       String
   jobId        String?
   content      Json
-  isBase       Boolean  @default(false)
+
+  versionType  VersionType @default(BASE)
+  parentId     String?
+
+  createdAt    DateTime @default(now())
 
   resume       Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   job          Job?     @relation(fields: [jobId], references: [id])
-
+  parent       ResumeVersion? @relation("VersionBranch", fields: [parentId], references: [id])
+  children     ResumeVersion[] @relation("VersionBranch")
+  applications JobApplication[]
   atsResults   ATSResult[]
   suggestions  AISuggestion[]
-  applications JobApplication[]
-
-  createdAt    DateTime @default(now())
 }
 
 model Job {
