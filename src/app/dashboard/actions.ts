@@ -1,10 +1,14 @@
 "use server";
-import { generateSectionSuggestions,StructuredResumeContent } from "@/lib/ai/suggestion-engine";
+import {
+  generateSectionSuggestions,
+  StructuredResumeContent,
+} from "@/lib/ai/suggestion-engine";
 import { tailorResumeWithAI } from "@/lib/ai/tailor";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
+import { generateSkillGaps } from "@/lib/ai/skillgap-generator";
 
 type ExperienceItem = {
   company: string;
@@ -370,7 +374,7 @@ export async function createTailoredVersion(
 
 export async function createTailoredVersionForJob(
   resumeId: string,
-  jobId: string
+  jobId: string,
 ) {
   const user = await getCurrentUser();
 
@@ -465,20 +469,11 @@ export async function deleteJob(jobId: string) {
   revalidatePath("/dashboard");
 }
 
-
-
-
-
-
-
-
-
-
 import { calculateSkillGap } from "@/lib/ai/skill-gap";
 
 export async function createTailoredVersionWithAI(
   resumeId: string,
-  jobId: string
+  jobId: string,
 ) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
@@ -505,7 +500,7 @@ export async function createTailoredVersionWithAI(
   // AI rewrite (currently mock-safe)
   const tailoredContent = await tailorResumeWithAI(
     baseVersion.content as ResumeContent,
-    job.description
+    job.description,
   );
 
   const newVersion = await prisma.resumeVersion.create({
@@ -519,24 +514,23 @@ export async function createTailoredVersionWithAI(
   });
 
   // Calculate ATS score deterministically
-  const skillGap = calculateSkillGap(
-    tailoredContent,
-    job.description
-  );
+  const skillGap = calculateSkillGap(tailoredContent, job.description);
 
   await prisma.aTSResult.create({
-  data: {
-    resumeVersionId: newVersion.id,
-    score: skillGap.matchPercentage,
-    matchedKeywords: skillGap.matchedSkills,
-    missingKeywords: skillGap.missingSkills,
-    weakKeywords: [],
-  },
-});
+    data: {
+      resumeVersionId: newVersion.id,
+      score: skillGap.matchPercentage,
+      matchedKeywords: skillGap.matchedSkills,
+      missingKeywords: skillGap.missingSkills,
+      weakKeywords: [],
+    },
+  });
 
-const structuredSuggestions = generateSectionSuggestions(
+  
+
+  const structuredSuggestions = generateSectionSuggestions(
     tailoredContent as StructuredResumeContent,
-    skillGap
+    skillGap,
   );
 
   await prisma.aISuggestion.createMany({
@@ -548,7 +542,76 @@ const structuredSuggestions = generateSectionSuggestions(
       applied: false,
     })),
   });
-  
+
+
+
+
+
+  await prisma.skillGap.deleteMany({
+    where: {
+      jobId: job.id,
+    },
+  });
+  const gaps = generateSkillGaps(job.description, skillGap);
+
+  if (gaps.length > 0) {
+    await prisma.skillGap.createMany({
+      data: gaps.map((gap) => ({
+        jobId: job.id,
+        skill: gap.skill,
+        priority: gap.priority,
+        estimatedTime: gap.estimatedTime,
+        reasoning: gap.reasoning,
+      })),
+    });
+  }
 
   return newVersion;
+}
+
+export async function applySuggestion(suggestionId: string) {
+  const user = await getCurrentUser();
+
+  if (!user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const suggestion = await prisma.aISuggestion.findUnique({
+    where: { id: suggestionId },
+    include: {
+      resumeVersion: true,
+    },
+  });
+
+  if (!suggestion) {
+    throw new Error("Suggestion not found");
+  }
+
+  // Ensure user owns this resume version
+  if (suggestion.resumeVersion.userId !== user.id) {
+    throw new Error("Forbidden");
+  }
+
+  const resumeVersion = suggestion.resumeVersion;
+
+  const content = (resumeVersion.content ?? {}) as Record<string, unknown>;
+
+  const updatedContent = {
+    ...content,
+    [suggestion.section]: suggestion.suggestedContent,
+  };
+
+  await prisma.resumeVersion.update({
+    where: { id: resumeVersion.id },
+    data: {
+      content: updatedContent as Prisma.InputJsonValue,
+    },
+  });
+
+  await prisma.aISuggestion.update({
+    where: { id: suggestionId },
+    data: { applied: true },
+  });
+
+  revalidatePath(`/dashboard/jobs/${resumeVersion.jobId}`);
 }

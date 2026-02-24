@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { calculateSkillGap } from "@/lib/ai/skill-gap";
+import { applySuggestion } from "@/app/dashboard/actions";
 
 interface Props {
   params: Promise<{
@@ -23,11 +24,12 @@ export default async function JobDetailPage({ params }: Props) {
       userId: user.id,
     },
     include: {
+      skillGaps: true,
       versions: {
         include: {
           resume: true,
           atsResults: true,
-         
+          suggestions: true,
         },
         orderBy: {
           createdAt: "desc",
@@ -51,7 +53,7 @@ export default async function JobDetailPage({ params }: Props) {
   });
 
   const baseVersion = baseResume?.versions.find(
-    (v) => v.versionType === "BASE"
+    (v) => v.versionType === "BASE",
   );
 
   const skillGap = baseVersion
@@ -94,17 +96,13 @@ export default async function JobDetailPage({ params }: Props) {
 
           <div className="text-sm">
             Match Score:
-            <span className="font-bold ml-2">
-              {skillGap.matchPercentage}%
-            </span>
+            <span className="font-bold ml-2">{skillGap.matchPercentage}%</span>
           </div>
 
           <div>
             <h3 className="font-medium mb-2">Matched Skills</h3>
             {skillGap.matchedSkills.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                No matching skills found.
-              </p>
+              <p className="text-sm text-gray-500">No matching skills found.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {skillGap.matchedSkills.map((skill) => (
@@ -122,9 +120,7 @@ export default async function JobDetailPage({ params }: Props) {
           <div>
             <h3 className="font-medium mb-2">Missing Skills</h3>
             {skillGap.missingSkills.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                No gaps detected.
-              </p>
+              <p className="text-sm text-gray-500">No gaps detected.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {skillGap.missingSkills.map((skill) => (
@@ -141,6 +137,34 @@ export default async function JobDetailPage({ params }: Props) {
         </div>
       )}
 
+      {/* SKILL GAP ROADMAP */}
+      {job.skillGaps && job.skillGaps.length > 0 && (
+        <div className="space-y-4 border rounded-lg p-6 bg-white">
+          <h2 className="text-xl font-semibold">Skill Improvement Roadmap</h2>
+
+          {job.skillGaps.map((gap) => (
+            <div
+              key={gap.id}
+              className="border rounded-md p-4 bg-gray-50 space-y-2"
+            >
+              <div className="flex justify-between items-center">
+                <p className="font-medium">{gap.skill}</p>
+                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                  {gap.priority}
+                </span>
+              </div>
+
+              <p className="text-sm text-gray-600">
+                Estimated Time: {gap.estimatedTime}
+              </p>
+
+              <p className="text-sm text-gray-700">{gap.reasoning}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Generate AI Button */}
       <form
         action={async () => {
           "use server";
@@ -151,9 +175,8 @@ export default async function JobDetailPage({ params }: Props) {
 
           if (!resume) return;
 
-          const { createTailoredVersionWithAI } = await import(
-            "@/app/dashboard/actions"
-          );
+          const { createTailoredVersionWithAI } =
+            await import("@/app/dashboard/actions");
 
           await createTailoredVersionWithAI(resume.id, job.id);
         }}
@@ -165,9 +188,7 @@ export default async function JobDetailPage({ params }: Props) {
 
       {/* TAILORED VERSIONS */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">
-          Tailored Resume Versions
-        </h2>
+        <h2 className="text-xl font-semibold">Tailored Resume Versions</h2>
 
         {job.versions.length === 0 ? (
           <p className="text-sm text-gray-500">
@@ -188,8 +209,7 @@ export default async function JobDetailPage({ params }: Props) {
                       Resume: {version.resume.title}
                     </p>
                     <p className="text-sm text-gray-600">
-                      Created:{" "}
-                      {new Date(version.createdAt).toLocaleString()}
+                      Created: {new Date(version.createdAt).toLocaleString()}
                     </p>
                   </div>
 
@@ -200,14 +220,59 @@ export default async function JobDetailPage({ params }: Props) {
                   )}
                 </div>
 
+                {/* AI Suggestions */}
+                {version.suggestions?.filter((s) => !s.applied).length > 0 && (
+                  <div className="mt-8 space-y-4">
+                    <h2 className="text-xl font-semibold">AI Suggestions</h2>
+
+                    {version.suggestions
+                      .filter((s) => !s.applied)
+                      .map((suggestion) => (
+                        <div
+                          key={suggestion.id}
+                          className="border rounded-lg p-4 bg-white text-black shadow-sm"
+                        >
+                          <p className="text-sm font-medium capitalize mb-2">
+                            Section: {suggestion.section}
+                          </p>
+
+                          <p className="text-xs text-gray-500 mb-2">
+                            Suggested Update:
+                          </p>
+
+                          <pre className="text-sm bg-gray-100 p-3 rounded overflow-x-auto">
+                            {JSON.stringify(
+                              suggestion.suggestedContent,
+                              null,
+                              2,
+                            )}
+                          </pre>
+
+                          <form
+                            action={async () => {
+                              "use server";
+                              await applySuggestion(suggestion.id);
+                            }}
+                            className="mt-3"
+                          >
+                            <button
+                              type="submit"
+                              className="bg-black text-white px-4 py-2 rounded text-sm"
+                            >
+                              Apply Suggestion
+                            </button>
+                          </form>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
                 {ats && (
                   <div className="space-y-2">
                     <div>
-                      <p className="text-sm font-medium">
-                        Matched Skills:
-                      </p>
+                      <p className="text-sm font-medium">Matched Skills:</p>
                       <div className="flex flex-wrap gap-2">
-                        {(ats.matchedKeywords as string[]).map((skill: string) => (
+                        {(ats.matchedKeywords as string[]).map((skill) => (
                           <span
                             key={skill}
                             className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
@@ -219,11 +284,9 @@ export default async function JobDetailPage({ params }: Props) {
                     </div>
 
                     <div>
-                      <p className="text-sm font-medium">
-                        Missing Skills:
-                      </p>
+                      <p className="text-sm font-medium">Missing Skills:</p>
                       <div className="flex flex-wrap gap-2">
-                        {(ats.missingKeywords as string[]).map((skill: string) => (
+                        {(ats.missingKeywords as string[]).map((skill) => (
                           <span
                             key={skill}
                             className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded"
