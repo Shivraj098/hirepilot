@@ -17,14 +17,12 @@ function isPartialMatch(a: string, b: string): boolean {
 
 export function calculateSkillGap(
   resumeContent: unknown,
-  jobDescription: string
+  jobDescription: string,
 ) {
   const rawResumeSkills = extractResumeSkills(resumeContent);
   const rawJobSkills = extractJobKeywords(jobDescription);
 
-  const resumeSkills = uniqueArray(
-    rawResumeSkills.map((s) => normalize(s))
-  );
+  const resumeSkills = uniqueArray(rawResumeSkills.map((s) => normalize(s)));
 
   const jobSkillsNormalized = rawJobSkills.map((s) => normalize(s));
 
@@ -47,7 +45,7 @@ export function calculateSkillGap(
     weightedTotalScore += frequency;
 
     const matched = resumeSkills.some((resumeSkill) =>
-      isPartialMatch(resumeSkill, jobSkill)
+      isPartialMatch(resumeSkill, jobSkill),
     );
 
     if (matched) {

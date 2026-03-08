@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
-import { createResume, createJob } from "./actions";
+import { createResume } from "@/server/actions/resume.actions";
+import { createJob } from "@/server/actions/job.actions";
 import Link from "next/link";
 
 export default async function DashboardHome() {

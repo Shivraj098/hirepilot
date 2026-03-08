@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { calculateSkillGap } from "@/lib/ai/skill-gap";
-import { applySuggestion } from "@/app/dashboard/actions";
+import { calculateSkillGap } from "@/server/ai/skill-gap";
+import { applySuggestion } from "@/server/actions/suggestion.actions";
+import { regenerateInterviewPrep } from "@/server/actions/interview.action";
 
-import { regenerateInterviewPrep } from "@/app/dashboard/actions";
+
 
 interface Props {
   params: Promise<{
@@ -180,7 +181,7 @@ export default async function JobDetailPage({ params }: Props) {
           if (!resume) return;
 
           const { createTailoredVersionWithAI } =
-            await import("@/app/dashboard/actions");
+            await import("@/server/actions/interview.action");
 
           await createTailoredVersionWithAI(resume.id, job.id);
         }}

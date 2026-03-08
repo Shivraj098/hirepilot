@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import Button from "@/components/ui/button";
+import Card from "@/components/ui/card";
+import Input from "@/components/ui/input";
 import {
   updateResumeSummary,
   addExperience,
@@ -10,57 +12,10 @@ import {
   removeSkill,
   addEducation,
   removeEducation,
-  createJob,
-  deleteJob,
-} from "../actions";
-
-async function createTailoredVersionForJob(resumeId: string, jobId: string) {
-  const user = await getCurrentUser();
-
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
-
-  // Verify job belongs to user
-  const job = await prisma.job.findFirst({
-    where: {
-      id: jobId,
-      userId: user.id,
-    },
-  });
-
-  if (!job) {
-    throw new Error("Job not found");
-  }
-
-  const baseVersion = await prisma.resumeVersion.findFirst({
-    where: {
-      resumeId,
-      userId: user.id,
-      versionType: "BASE",
-    },
-  });
-
-  if (!baseVersion) {
-    throw new Error("Base version not found");
-  }
-
-  const tailoredVersion = await prisma.resumeVersion.create({
-    data: {
-      resumeId,
-      userId: user.id,
-      jobId: job.id,
-      content: baseVersion.content ?? {},
-      versionType: "TAILORED",
-      parentId: baseVersion.id,
-    },
-  });
-
-  revalidatePath(`/dashboard/${resumeId}`);
-  revalidatePath("/dashboard");
-
-  return tailoredVersion;
-}
+  createTailoredVersionForJob,
+} from "@/server/actions/resume.actions";
+import { createJob, deleteJob } from "@/server/actions/job.actions";
+import FormWithToast from "@/components/ui/form-with-toast";
 
 interface Props {
   params: Promise<{
@@ -137,117 +92,126 @@ export default async function ResumePage({ params }: Props) {
       <h1 className="text-3xl font-bold tracking-tight">{resume.title}</h1>
 
       {/* ================= SUMMARY ================= */}
-      <section className="rounded-xl border bg-white/70 backdrop-blur p-6 space-y-6 shadow-sm">
-        <div>
-          <h2 className="text-lg font-semibold">Professional Summary</h2>
-        </div>
-
-        <form
-          action={async (formData) => {
-            "use server";
-            const summary = formData.get("summary") as string;
-            await updateResumeSummary(resumeId, summary);
-          }}
-          className="space-y-4"
-        >
+      <FormWithToast
+        successMessage="Summary updated"
+        action={async (formData) => {
+          "use server";
+          const summary = formData.get("summary") as string;
+          await updateResumeSummary(resumeId, summary);
+        }}
+      >
+        <>
           <textarea
             name="summary"
             defaultValue={content.summary ?? ""}
             rows={6}
-            className="w-full border rounded-lg p-3 text-black focus:outline-none focus:ring-2 focus:ring-black/20"
+            className="w-full border border-border/60 rounded-xl p-4 text-sm bg-background transition focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/20"
           />
 
           <div className="flex justify-end">
-            <button className="bg-black text-white px-5 py-2 rounded-lg">
-              Save
-            </button>
+            <Button variant="primary">Save</Button>
           </div>
-        </form>
-      </section>
+        </>
+      </FormWithToast>
 
       {/* ================= SKILLS ================= */}
-      <section className="rounded-xl border bg-white/70 p-6 space-y-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Skills</h2>
+      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">Skills</h2>
+          <p className="text-sm text-muted-foreground">
+            Highlight technologies and strengths relevant to your roles.
+          </p>
+        </div>
 
         {skills.length === 0 ? (
-          <p className="text-sm text-gray-500">No skills added yet.</p>
+          <p className="text-sm text-muted-foreground">No skills added yet.</p>
         ) : (
           <div className="flex flex-wrap gap-3">
             {skills.map((skill, index) => (
               <div
                 key={index}
-                className="bg-gray-100 px-3 py-1.5 rounded-full text-sm flex items-center gap-2"
+                className="bg-muted/40 px-3 py-1.5 rounded-full text-sm flex items-center gap-2 border border-border/50 transition hover:bg-muted/60"
               >
-                {skill}
-                <form
+                <span className="font-medium">{skill}</span>
+                <FormWithToast
+                  successMessage="Skill removed"
                   action={async () => {
                     "use server";
                     await removeSkill(resumeId, index);
                   }}
                 >
-                  <button className="text-red-500 text-xs">×</button>
-                </form>
+                  <Button variant="ghost" className="text-red-500 text-xs">
+                    ×
+                  </Button>
+                </FormWithToast>
               </div>
             ))}
           </div>
         )}
 
-        <form
+        <FormWithToast
+          successMessage="Skill added"
           action={async (formData) => {
             "use server";
             const skill = formData.get("skill") as string;
             if (!skill) return;
             await addSkill(resumeId, skill);
           }}
-          className="flex gap-3 pt-4 border-t"
         >
-          <input
-            name="skill"
-            placeholder="Add skill (e.g., React)"
-            className="flex-1 border rounded-lg p-2 text-black"
-          />
-          <button className="bg-black text-white px-4 py-2 rounded-lg">
-            Add
-          </button>
-        </form>
-      </section>
+          <div className="flex gap-3 pt-4 border-t">
+            <Input name="skill" placeholder="Add skill (e.g., React)" />
+            <Button variant="primary">Add</Button>
+          </div>
+        </FormWithToast>
+      </Card>
 
       {/* ================= EDUCATION ================= */}
-      <section className="rounded-xl border bg-white/70 p-6 space-y-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Education</h2>
+      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">Education</h2>
+          <p className="text-sm text-muted-foreground">
+            Academic background and foundational credentials.
+          </p>
+        </div>
 
         {education.length === 0 ? (
-          <p className="text-sm text-gray-500">No education added yet.</p>
+          <p className="text-sm text-muted-foreground">
+            No education added yet.
+          </p>
         ) : (
           <div className="space-y-4">
             {education.map((edu, index) => (
               <div
                 key={index}
-                className="border rounded-xl p-5 bg-gray-50 space-y-1"
+                className="border border-border/50 rounded-xl p-6 bg-muted/30 transition hover:bg-muted/40"
               >
-                <div className="flex justify-between">
-                  <div>
-                    <h3 className="font-semibold">{edu.degree}</h3>
-                    <p className="text-sm text-gray-600">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <h3 className="font-medium text-base">{edu.degree}</h3>
+                    <p className="text-sm text-muted-foreground">
                       {edu.institution} — {edu.duration}
                     </p>
                   </div>
 
-                  <form
+                  <FormWithToast
+                    successMessage="Education removed"
                     action={async () => {
                       "use server";
                       await removeEducation(resumeId, index);
                     }}
                   >
-                    <button className="text-red-500 text-sm">Remove</button>
-                  </form>
+                    <Button variant="ghost" className="text-red-500 text-sm">
+                      Remove
+                    </Button>
+                  </FormWithToast>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        <form
+        <FormWithToast
+          successMessage="Education added"
           action={async (formData) => {
             "use server";
             await addEducation(resumeId, {
@@ -256,70 +220,69 @@ export default async function ResumePage({ params }: Props) {
               duration: formData.get("duration") as string,
             });
           }}
-          className="space-y-3 pt-4 border-t"
         >
-          <input
-            name="degree"
-            placeholder="Degree"
-            className="border p-2 rounded-lg w-full text-black"
-          />
-          <input
-            name="institution"
-            placeholder="Institution"
-            className="border p-2 rounded-lg w-full text-black"
-          />
-          <input
-            name="duration"
-            placeholder="Duration"
-            className="border p-2 rounded-lg w-full text-black"
-          />
+          <div className="space-y-3 pt-4 border-t">
+            <Input name="degree" placeholder="Degree" />
+            <Input name="institution" placeholder="Institution" />
+            <Input name="duration" placeholder="Duration" />
 
-          <div className="flex justify-end">
-            <button className="bg-black text-white px-4 py-2 rounded-lg">
-              Add Education
-            </button>
+            <div className="flex justify-end">
+              <Button variant="primary">Add Education</Button>
+            </div>
           </div>
-        </form>
-      </section>
-
+        </FormWithToast>
+      </Card>
       {/* ================= EXPERIENCE ================= */}
-      <section className="rounded-xl border bg-white/70 p-6 space-y-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Experience</h2>
+      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">Experience</h2>
+          <p className="text-sm text-muted-foreground">
+            Professional roles and measurable impact.
+          </p>
+        </div>
 
         {experience.length === 0 ? (
-          <p className="text-sm text-gray-500">No experience added yet.</p>
+          <p className="text-sm text-muted-foreground">
+            No experience added yet.
+          </p>
         ) : (
           <div className="space-y-4">
             {experience.map((exp, index) => (
               <div
                 key={index}
-                className="border rounded-xl p-5 bg-gray-50 space-y-2"
+                className="border border-border/50 rounded-xl p-6 bg-muted/30 space-y-3 transition hover:bg-muted/40"
               >
-                <div className="flex justify-between">
-                  <div>
-                    <h3 className="font-semibold">{exp.role}</h3>
-                    <p className="text-sm text-gray-600">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <h3 className="font-medium text-base">{exp.role}</h3>
+                    <p className="text-sm text-muted-foreground">
                       {exp.company} — {exp.duration}
                     </p>
                   </div>
 
-                  <form
+                  <FormWithToast
+                    successMessage="Experience removed"
                     action={async () => {
                       "use server";
                       await removeExperience(resumeId, index);
                     }}
                   >
-                    <button className="text-red-500 text-sm">Remove</button>
-                  </form>
+                    <Button variant="ghost" className="text-red-500 text-sm">
+                      Remove
+                    </Button>
+                  </FormWithToast>
                 </div>
 
-                <p className="text-sm">{exp.description}</p>
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {exp.description}
+                </p>
               </div>
             ))}
           </div>
         )}
 
-        <form
+        <FormWithToast
+          successMessage="Experience added"
           action={async (formData) => {
             "use server";
             await addExperience(resumeId, {
@@ -329,127 +292,144 @@ export default async function ResumePage({ params }: Props) {
               description: formData.get("description") as string,
             });
           }}
-          className="space-y-3 pt-4 border-t"
         >
-          <input
-            name="role"
-            placeholder="Role"
-            className="border p-2 rounded-lg w-full text-black"
-          />
-          <input
-            name="company"
-            placeholder="Company"
-            className="border p-2 rounded-lg w-full text-black"
-          />
-          <input
-            name="duration"
-            placeholder="Duration"
-            className="border p-2 rounded-lg w-full text-black"
-          />
+          <Input name="role" placeholder="Role" />
+          <Input name="company" placeholder="Company" />
+          <Input name="duration" placeholder="Duration" />
           <textarea
             name="description"
             placeholder="Description"
-            className="border p-2 rounded-lg w-full text-black"
+            className="border border-border/60 p-3 rounded-xl w-full text-sm bg-background focus:ring-2 focus:ring-black/10 transition"
           />
 
-          <div className="flex justify-end">
-            <button className="bg-black text-white px-4 py-2 rounded-lg">
-              Add Experience
-            </button>
+          <div className="flex justify-end pt-2">
+            <Button variant="primary">Add Experience</Button>
           </div>
-        </form>
-      </section>
+        </FormWithToast>
+      </Card>
 
       {/* ================= VERSION HISTORY ================= */}
-      <div className="space-y-4 mt-8">
-        <h2 className="text-xl font-semibold">Version History</h2>
+      <Card className="p-8 space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Version History
+          </h2>
+          <p className="text-sm text-neutral-500">
+            Tailored resumes generated for different jobs.
+          </p>
+        </div>
 
-        {tailoredVersions.length === 0 && (
-          <p className="text-sm text-gray-500">No tailored versions yet.</p>
-        )}
-
-        {tailoredVersions.map((version) => (
-          <div
-            key={version.id}
-            className="border rounded p-4 bg-gray-50 text-black space-y-2"
-          >
-            <div className="flex justify-between">
-              <div>
-                <p className="font-medium">Tailored for {version.job?.title}</p>
-                <p className="text-sm text-gray-600">
-                  {version.job?.company}
-                  {version.job?.location && ` — ${version.job.location}`}
-                </p>
-              </div>
-
-              <span className="text-sm text-gray-600">
-                {new Date(version.createdAt).toLocaleString()}
-              </span>
-            </div>
+        {tailoredVersions.length === 0 ? (
+          <div className="text-center py-6 text-neutral-500 text-sm">
+            No tailored versions yet.
           </div>
-        ))}
-      </div>
+        ) : (
+          <div className="space-y-4">
+            {tailoredVersions.map((version) => (
+              <div
+                key={version.id}
+                className="rounded-xl border border-neutral-200/70 bg-white/70 p-5 flex justify-between items-start transition hover:shadow-sm"
+              >
+                <div className="space-y-1">
+                  <p className="font-medium">
+                    Tailored for {version.job?.title}
+                  </p>
+
+                  <p className="text-sm text-neutral-500">
+                    {version.job?.company}
+                    {version.job?.location && ` — ${version.job.location}`}
+                  </p>
+                </div>
+
+                <span className="text-xs text-neutral-400">
+                  {new Date(version.createdAt).toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* ================= CREATE TAILORED ================= */}
-      <section className="rounded-xl border bg-blue-50 p-6 shadow-sm">
-        <form
+      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Create Tailored Version
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Generate a resume version customized for a selected job.
+          </p>
+        </div>
+
+        <FormWithToast
+          successMessage="Tailored version created"
           action={async (formData) => {
             "use server";
             const jobId = formData.get("jobId") as string;
             if (!jobId) return;
             await createTailoredVersionForJob(resumeId, jobId);
           }}
-          className="space-y-3"
         >
-          <select
-            name="jobId"
-            className="border p-2 rounded-lg w-full text-black"
-            required
-          >
-            <option value="">Select a job to tailor resume</option>
-            {jobs.map((job) => (
-              <option key={job.id} value={job.id}>
-                {job.title} at {job.company}
-              </option>
-            ))}
-          </select>
-          <button className="bg-blue-600 text-white px-5 py-2 rounded-lg w-full">
-            Create Tailored Version
-          </button>
-        </form>
-      </section>
+          <div className="space-y-4">
+            <select
+              name="jobId"
+              className="border border-border/60 rounded-xl p-3 w-full text-sm bg-background focus:ring-2 focus:ring-black/10 transition"
+              required
+            >
+              <option value="">Select a job to tailor resume</option>
+              {jobs.map((job) => (
+                <option key={job.id} value={job.id}>
+                  {job.title} at {job.company}
+                </option>
+              ))}
+            </select>
+
+            <Button variant="primary">Create Tailored Version</Button>
+          </div>
+        </FormWithToast>
+      </Card>
 
       {/* ================= JOBS ================= */}
-      <section className="rounded-xl border bg-white/70 p-6 space-y-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Jobs</h2>
+      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">Jobs</h2>
+          <p className="text-sm text-muted-foreground">
+            Track roles you’re applying to and tailor resumes accordingly.
+          </p>
+        </div>
 
         {jobs.length === 0 ? (
-          <p className="text-sm text-gray-500">No jobs added yet.</p>
+          <p className="text-sm text-muted-foreground">No jobs added yet.</p>
         ) : (
           <div className="space-y-4">
             {jobs.map((job) => (
               <div
                 key={job.id}
-                className="border rounded-xl p-5 bg-gray-50 flex justify-between"
+                className="border border-border/50 rounded-xl p-6 bg-muted/30 flex justify-between items-start transition hover:bg-muted/40"
               >
-                <div>
-                  <h3 className="font-medium">{job.title}</h3>
-                  <p className="text-sm text-gray-600">{job.company}</p>
+                <div className="space-y-1">
+                  <h3 className="font-medium text-base">{job.title}</h3>
+                  <p className="text-sm text-muted-foreground">{job.company}</p>
                 </div>
 
-                <form
+                <FormWithToast
+                  successMessage="Job deleted"
                   action={async () => {
                     "use server";
                     await deleteJob(job.id);
                   }}
                 >
-                  <button className="text-red-500 text-sm">Delete</button>
-                </form>
+                  <Button variant="ghost" className="text-red-500 text-sm">
+                    Delete
+                  </Button>
+                </FormWithToast>
               </div>
             ))}
           </div>
         )}
 
-        <form
+        <FormWithToast
+          successMessage="Job created"
           action={async (formData) => {
             "use server";
             await createJob({
@@ -460,41 +440,25 @@ export default async function ResumePage({ params }: Props) {
               jobLink: formData.get("jobLink") as string,
             });
           }}
-          className="space-y-3 pt-6 border-t"
         >
-          <input
-            name="title"
-            placeholder="Job Title"
-            className="border p-2 rounded-lg w-full text-black"
-          />
-          <input
-            name="company"
-            placeholder="Company"
-            className="border p-2 rounded-lg w-full text-black"
-          />
-          <input
-            name="location"
-            placeholder="Location"
-            className="border p-2 rounded-lg w-full text-black"
-          />
-          <input
-            name="jobLink"
-            placeholder="Job Link"
-            className="border p-2 rounded-lg w-full text-black"
-          />
-          <textarea
-            name="description"
-            placeholder="Job Description"
-            className="border p-2 rounded-lg w-full text-black"
-          />
+          <div className="space-y-3 pt-6 border-t">
+            <Input name="title" placeholder="Job Title" />
+            <Input name="company" placeholder="Company" />
+            <Input name="location" placeholder="Location" />
+            <Input name="jobLink" placeholder="Job Link" />
 
-          <div className="flex justify-end">
-            <button className="bg-black text-white px-5 py-2 rounded-lg">
-              Add Job
-            </button>
+            <textarea
+              name="description"
+              placeholder="Job Description"
+              className="border border-border/60 p-3 rounded-xl w-full text-sm bg-background focus:ring-2 focus:ring-black/10 transition"
+            />
+
+            <div className="flex justify-end pt-2">
+              <Button variant="primary">Add Job</Button>
+            </div>
           </div>
-        </form>
-      </section>
+        </FormWithToast>
+      </Card>
     </div>
   );
 }
