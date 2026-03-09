@@ -11,9 +11,10 @@ export default function Card({
   return (
     <div
       className={clsx(
-        "rounded-2xl border border-neutral-200/70 bg-white/80 backdrop-blur-md",
-        "shadow-sm transition-all duration-300",
-        "hover:shadow-lg hover:border-neutral-300/80",
+        "rounded-2xl border border-border bg-card text-card-foreground",
+        "shadow-sm",
+        "transition-all duration-200",
+        "hover:shadow-md",
         className
       )}
     >

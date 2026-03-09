@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { calculateSkillGap } from "@/server/ai/skill-gap";
 import { applySuggestion } from "@/server/actions/suggestion.actions";
 import { regenerateInterviewPrep } from "@/server/actions/interview.action";
-
-
+import Card from "@/components/ui/card";
+import Button from "@/components/ui/button";
 
 interface Props {
   params: Promise<{
@@ -68,9 +68,10 @@ export default async function JobDetailPage({ params }: Props) {
   return (
     <div className="p-8 max-w-4xl space-y-12">
       {/* HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold">{job.title}</h1>
-        <p className="text-gray-600">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">{job.title}</h1>
+
+        <p className="text-sm text-muted-foreground">
           {job.company}
           {job.location && ` — ${job.location}`}
         </p>
@@ -79,41 +80,81 @@ export default async function JobDetailPage({ params }: Props) {
           <a
             href={job.jobLink}
             target="_blank"
-            className="text-blue-600 text-sm"
+            className="
+        text-sm
+        text-accent
+        hover:underline
+      "
           >
             View Job Posting
           </a>
         )}
       </div>
-
       {/* JOB DESCRIPTION */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Job Description</h2>
-        <div className="border rounded p-4 bg-white text-black whitespace-pre-wrap">
+      <Card className="p-8 space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Job Description
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Full description of the role you are targeting.
+          </p>
+        </div>
+
+        <div
+          className="
+      rounded-xl
+      border border-border
+      bg-muted
+      p-5
+      text-sm
+      whitespace-pre-wrap
+      leading-relaxed
+    "
+        >
           {job.description}
         </div>
-      </div>
-
+      </Card>
       {/* SKILL GAP ANALYSIS */}
       {skillGap && (
-        <div className="space-y-4 border rounded-lg p-6 bg-gray-50">
-          <h2 className="text-xl font-semibold">Skill Gap Analysis</h2>
+        <Card className="p-8 space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Skill Gap Analysis
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Comparison between your resume and job requirements.
+            </p>
+          </div>
 
           <div className="text-sm">
             Match Score:
-            <span className="font-bold ml-2">{skillGap.matchPercentage}%</span>
+            <span className="font-semibold ml-2">
+              {skillGap.matchPercentage}%
+            </span>
           </div>
 
-          <div>
-            <h3 className="font-medium mb-2">Matched Skills</h3>
+          {/* MATCHED */}
+
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Matched Skills</h3>
+
             {skillGap.matchedSkills.length === 0 ? (
-              <p className="text-sm text-gray-500">No matching skills found.</p>
+              <p className="text-sm text-muted-foreground">
+                No matching skills found.
+              </p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {skillGap.matchedSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded"
+                    className="
+                rounded-full
+                border border-border
+                bg-muted
+                px-3 py-1.5
+                text-sm
+              "
                   >
                     {skill}
                   </span>
@@ -122,16 +163,25 @@ export default async function JobDetailPage({ params }: Props) {
             )}
           </div>
 
-          <div>
-            <h3 className="font-medium mb-2">Missing Skills</h3>
+          {/* MISSING */}
+
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Missing Skills</h3>
+
             {skillGap.missingSkills.length === 0 ? (
-              <p className="text-sm text-gray-500">No gaps detected.</p>
+              <p className="text-sm text-muted-foreground">No gaps detected.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {skillGap.missingSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="px-3 py-1 bg-red-100 text-red-700 text-sm rounded"
+                    className="
+                rounded-full
+                border border-border
+                bg-muted
+                px-3 py-1.5
+                text-sm
+              "
                   >
                     {skill}
                   </span>
@@ -139,244 +189,347 @@ export default async function JobDetailPage({ params }: Props) {
               </div>
             )}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* SKILL GAP ROADMAP */}
+
       {job.skillGaps && job.skillGaps.length > 0 && (
-        <div className="space-y-4 border rounded-lg p-6 bg-white">
-          <h2 className="text-xl font-semibold">Skill Improvement Roadmap</h2>
+        <Card className="p-8 space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Skill Improvement Roadmap
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Recommended skills to learn to better match this role.
+            </p>
+          </div>
 
-          {job.skillGaps.map((gap) => (
-            <div
-              key={gap.id}
-              className="border rounded-md p-4 bg-gray-50 space-y-2"
-            >
-              <div className="flex justify-between items-center">
-                <p className="font-medium">{gap.skill}</p>
-                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                  {gap.priority}
-                </span>
+          <div className="space-y-3">
+            {job.skillGaps.map((gap) => (
+              <div
+                key={gap.id}
+                className="
+            rounded-xl
+            border border-border
+            bg-muted
+            p-5
+            space-y-2
+            transition-colors
+            hover:bg-muted/80
+          "
+              >
+                <div className="flex justify-between items-center gap-4">
+                  <p className="font-medium">{gap.skill}</p>
+
+                  <span
+                    className="
+                text-xs
+                rounded-full
+                border border-border
+                bg-background
+                px-2 py-1
+              "
+                  >
+                    {gap.priority}
+                  </span>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  Estimated Time: {gap.estimatedTime}
+                </p>
+
+                <p className="text-sm">{gap.reasoning}</p>
               </div>
-
-              <p className="text-sm text-gray-600">
-                Estimated Time: {gap.estimatedTime}
-              </p>
-
-              <p className="text-sm text-gray-700">{gap.reasoning}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </Card>
       )}
 
       {/* Generate AI Button */}
-      <form
-        action={async () => {
-          "use server";
-          const resume = await prisma.resume.findFirst({
-            where: { userId: user.id },
-            orderBy: { createdAt: "desc" },
-          });
+      <Card className="p-8 space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">
+            AI Resume Tailoring
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Generate a tailored resume based on this job description.
+          </p>
+        </div>
 
-          if (!resume) return;
+        <form
+          action={async () => {
+            "use server";
 
-          const { createTailoredVersionWithAI } =
-            await import("@/server/actions/interview.action");
+            const resume = await prisma.resume.findFirst({
+              where: { userId: user.id },
+              orderBy: { createdAt: "desc" },
+            });
 
-          await createTailoredVersionWithAI(resume.id, job.id);
-        }}
-      >
-        <button className="bg-black text-white px-4 py-2 rounded">
-          Generate Tailored Resume with AI
-        </button>
-      </form>
+            if (!resume) return;
 
+            const { createTailoredVersionWithAI } =
+              await import("@/server/actions/interview.action");
+
+            await createTailoredVersionWithAI(resume.id, job.id);
+          }}
+        >
+          <div className="flex justify-end">
+            <Button variant="primary">Generate Tailored Resume with AI</Button>
+          </div>
+        </form>
+      </Card>
       {/* TAILORED VERSIONS */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Tailored Resume Versions</h2>
+      <Card className="p-8 space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Tailored Resume Versions
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            AI-generated resume versions for this job.
+          </p>
+        </div>
 
         {job.versions.length === 0 ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             No tailored resumes created yet.
           </p>
         ) : (
-          job.versions.map((version) => {
-            const ats = version.aTSResults?.[0];
+          <div className="space-y-3">
+            {job.versions.map((version) => {
+              const ats = version.aTSResults?.[0];
 
-            return (
-              <div
-                key={version.id}
-                className="border rounded p-4 bg-white text-black space-y-3"
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">
-                      Resume: {version.resume.title}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Created: {new Date(version.createdAt).toLocaleString()}
-                    </p>
+              return (
+                <div
+                  key={version.id}
+                  className="
+              rounded-xl
+              border border-border
+              bg-muted
+              p-5
+              space-y-3
+              transition-colors
+              hover:bg-muted/80
+            "
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="space-y-1">
+                      <p className="font-medium">
+                        Resume: {version.resume.title}
+                      </p>
+
+                      <p className="text-sm text-muted-foreground">
+                        Created: {new Date(version.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+
+                    {ats && (
+                      <div
+                        className="
+                    text-sm
+                    rounded-full
+                    border border-border
+                    bg-background
+                    px-3 py-1
+                    font-medium
+                  "
+                      >
+                        ATS {ats.score}%
+                      </div>
+                    )}
                   </div>
+                  {/* Interview Preparation */}
+                  {job.interviewPreps.length > 0 && (
+                    <div className="mt-6 space-y-4">
+                      <h3 className="text-sm font-medium">
+                        Interview Preparation
+                      </h3>
+
+                      {job.interviewPreps.map((prep) => {
+                        const questions = prep.questions as string[];
+                        const starDrafts = prep.starDrafts as string[];
+                        const technicalTopics =
+                          prep.technicalTopics as string[];
+
+                        return (
+                          <div
+                            key={prep.id}
+                            className="
+            rounded-lg
+            border border-border
+            bg-background
+            p-5
+            space-y-4
+          "
+                          >
+                            {/* Technical */}
+
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-medium">
+                                Technical Topics
+                              </h4>
+
+                              <ul className="list-disc ml-5 text-sm text-muted-foreground space-y-1">
+                                {technicalTopics.map((topic, index) => (
+                                  <li key={index}>{topic}</li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            {/* Questions */}
+
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-medium">
+                                Interview Questions
+                              </h4>
+
+                              <ul className="list-disc ml-5 text-sm text-muted-foreground space-y-1">
+                                {questions.map((question, index) => (
+                                  <li key={index}>{question}</li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            {/* STAR */}
+
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-medium">
+                                STAR Answer Framework
+                              </h4>
+
+                              <ul className="list-disc ml-5 text-sm text-muted-foreground space-y-1">
+                                {starDrafts.map((draft, index) => (
+                                  <li key={index}>{draft}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <form
+                    action={async () => {
+                      "use server";
+                      await regenerateInterviewPrep(job.id);
+                    }}
+                  >
+                    <div className="mt-4">
+                      <Button variant="secondary">
+                        Regenerate Interview Prep
+                      </Button>
+                    </div>
+                  </form>
+                  {/* AI Suggestions */}
+                  {version.suggestions?.filter((s) => !s.applied).length >
+                    0 && (
+                    <div className="mt-6 space-y-4">
+                      <h3 className="text-sm font-medium">AI Suggestions</h3>
+
+                      {version.suggestions
+                        .filter((s) => !s.applied)
+                        .map((suggestion) => (
+                          <div
+                            key={suggestion.id}
+                            className="
+            rounded-lg
+            border border-border
+            bg-background
+            p-4
+            space-y-3
+          "
+                          >
+                            <p className="text-sm font-medium capitalize">
+                              Section: {suggestion.section}
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              Suggested Update:
+                            </p>
+
+                            <pre
+                              className="
+              text-xs
+              bg-muted
+              p-3
+              rounded-md
+              overflow-x-auto
+            "
+                            >
+                              {JSON.stringify(
+                                suggestion.suggestedContent,
+                                null,
+                                2,
+                              )}
+                            </pre>
+
+                            <form
+                              action={async () => {
+                                "use server";
+                                await applySuggestion(suggestion.id);
+                              }}
+                            >
+                              <Button variant="primary" className="mt-2">
+                                Apply Suggestion
+                              </Button>
+                            </form>
+                          </div>
+                        ))}
+                    </div>
+                  )}
 
                   {ats && (
-                    <div className="text-sm font-semibold">
-                      ATS Score: {ats.score}%
+                    <div className="mt-6 space-y-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Matched Skills</p>
+
+                        <div className="flex flex-wrap gap-2">
+                          {(ats.matchedKeywords as string[]).map((skill) => (
+                            <span
+                              key={skill}
+                              className="
+                rounded-full
+                border border-border
+                bg-muted
+                px-2 py-1
+                text-xs
+              "
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Missing Skills</p>
+
+                        <div className="flex flex-wrap gap-2">
+                          {(ats.missingKeywords as string[]).map((skill) => (
+                            <span
+                              key={skill}
+                              className="
+                rounded-full
+                border border-border
+                bg-muted
+                px-2 py-1
+                text-xs
+              "
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
-
-                {/* Interview Preparation */}
-                {job.interviewPreps.length > 0 && (
-                  <div className="mt-12 space-y-6">
-                    <h2 className="text-xl font-semibold">
-                      Interview Preparation
-                    </h2>
-
-                    {job.interviewPreps.map((prep) => {
-                      const questions = prep.questions as string[];
-                      const starDrafts = prep.starDrafts as string[];
-                      const technicalTopics = prep.technicalTopics as string[];
-
-                      return (
-                        <div
-                          key={prep.id}
-                          className="border rounded-lg p-6 bg-white text-black shadow-sm space-y-4"
-                        >
-                          <div>
-                            <h3 className="font-semibold mb-2">
-                              Technical Topics
-                            </h3>
-                            <ul className="list-disc ml-6 text-sm">
-                              {technicalTopics.map((topic, index) => (
-                                <li key={index}>{topic}</li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          <div>
-                            <h3 className="font-semibold mb-2">
-                              Interview Questions
-                            </h3>
-                            <ul className="list-disc ml-6 text-sm">
-                              {questions.map((question, index) => (
-                                <li key={index}>{question}</li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          <div>
-                            <h3 className="font-semibold mb-2">
-                              STAR Answer Framework
-                            </h3>
-                            <ul className="list-disc ml-6 text-sm">
-                              {starDrafts.map((draft, index) => (
-                                <li key={index}>{draft}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <form
-                  action={async () => {
-                    "use server";
-                    await regenerateInterviewPrep(job.id);
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="bg-black text-white px-4 py-2 rounded text-sm"
-                  >
-                    Regenerate Interview Prep
-                  </button>
-                </form>
-
-                {/* AI Suggestions */}
-                {version.suggestions?.filter((s) => !s.applied).length > 0 && (
-                  <div className="mt-8 space-y-4">
-                    <h2 className="text-xl font-semibold">AI Suggestions</h2>
-
-                    {version.suggestions
-                      .filter((s) => !s.applied)
-                      .map((suggestion) => (
-                        <div
-                          key={suggestion.id}
-                          className="border rounded-lg p-4 bg-white text-black shadow-sm"
-                        >
-                          <p className="text-sm font-medium capitalize mb-2">
-                            Section: {suggestion.section}
-                          </p>
-
-                          <p className="text-xs text-gray-500 mb-2">
-                            Suggested Update:
-                          </p>
-
-                          <pre className="text-sm bg-gray-100 p-3 rounded overflow-x-auto">
-                            {JSON.stringify(
-                              suggestion.suggestedContent,
-                              null,
-                              2,
-                            )}
-                          </pre>
-
-                          <form
-                            action={async () => {
-                              "use server";
-                              await applySuggestion(suggestion.id);
-                            }}
-                            className="mt-3"
-                          >
-                            <button
-                              type="submit"
-                              className="bg-black text-white px-4 py-2 rounded text-sm"
-                            >
-                              Apply Suggestion
-                            </button>
-                          </form>
-                        </div>
-                      ))}
-                  </div>
-                )}
-
-                {ats && (
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-sm font-medium">Matched Skills:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {(ats.matchedKeywords as string[]).map((skill) => (
-                          <span
-                            key={skill}
-                            className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-medium">Missing Skills:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {(ats.missingKeywords as string[]).map((skill) => (
-                          <span
-                            key={skill}
-                            className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

@@ -10,21 +10,26 @@ export default function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const pathname = usePathname(); // ✅ MUST be here
+  const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100 text-neutral-900 flex">
-      
+    <div className="min-h-screen bg-background text-foreground flex">
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-neutral-200/70 bg-white/60 backdrop-blur-xl p-6">
-        <nav className="space-y-2 text-sm">
-          
+      <aside className="w-64 border-r border-border bg-sidebar p-6 flex flex-col">
+
+        <div className="text-lg font-semibold mb-6">
+          HirePilot
+        </div>
+
+        <nav className="space-y-1 text-sm">
+
           <Link
             href="/dashboard"
-            className={`block px-4 py-2.5 rounded-xl transition-colors font-medium ${
+            className={`block px-3 py-2 rounded-lg transition-colors ${
               pathname === "/dashboard"
-                ? "bg-neutral-900 text-white"
-                : "hover:bg-neutral-100 text-neutral-700"
+                ? "bg-sidebar-accent text-foreground font-medium"
+                : "text-muted-foreground hover:bg-sidebar-accent"
             }`}
           >
             Dashboard
@@ -32,10 +37,10 @@ export default function DashboardLayout({
 
           <Link
             href="/dashboard/resumes"
-            className={`block px-4 py-2.5 rounded-xl transition-colors ${
-              pathname.includes("/dashboard/")
-                ? "bg-neutral-900 text-white"
-                : "hover:bg-neutral-100 text-neutral-700"
+            className={`block px-3 py-2 rounded-lg transition-colors ${
+              pathname.includes("/resumes")
+                ? "bg-sidebar-accent text-foreground font-medium"
+                : "text-muted-foreground hover:bg-sidebar-accent"
             }`}
           >
             Resumes
@@ -43,10 +48,10 @@ export default function DashboardLayout({
 
           <Link
             href="/dashboard/jobs"
-            className={`block px-4 py-2.5 rounded-xl transition-colors ${
+            className={`block px-3 py-2 rounded-lg transition-colors ${
               pathname.includes("/jobs")
-                ? "bg-neutral-900 text-white"
-                : "hover:bg-neutral-100 text-neutral-700"
+                ? "bg-sidebar-accent text-foreground font-medium"
+                : "text-muted-foreground hover:bg-sidebar-accent"
             }`}
           >
             Jobs
@@ -55,27 +60,33 @@ export default function DashboardLayout({
         </nav>
       </aside>
 
-      {/* Main Area */}
+      {/* Main */}
       <div className="flex-1 flex flex-col">
 
         {/* Header */}
-        <header className="h-16 border-b border-neutral-200/70 bg-white/60 backdrop-blur-xl flex items-center justify-between px-10">
-          <h1 className="text-lg font-medium tracking-tight">
+        <header className="h-16 border-b border-border bg-background flex items-center justify-between px-8">
+
+          <h1 className="text-base font-semibold tracking-tight">
             Dashboard
           </h1>
 
-          <div className="text-sm text-neutral-500">
+          <div className="text-sm text-muted-foreground">
             Resume Optimization Workspace
           </div>
+
         </header>
 
         {/* Content */}
-        <main className="flex-1 px-12 py-12">
-          <div className="max-w-6xl mx-auto">
+        <main className="flex-1 px-8 py-8">
+
+          <div className="max-w-5xl mx-auto">
+
             <MotionWrapper>
               {children}
             </MotionWrapper>
+
           </div>
+
         </main>
 
       </div>

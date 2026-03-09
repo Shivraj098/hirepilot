@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
 import Input from "@/components/ui/input";
+import Textarea from "@/components/ui/textarea";
+import Select from "@/components/ui/select";
 import {
   updateResumeSummary,
   addExperience,
@@ -92,30 +94,38 @@ export default async function ResumePage({ params }: Props) {
       <h1 className="text-3xl font-bold tracking-tight">{resume.title}</h1>
 
       {/* ================= SUMMARY ================= */}
-      <FormWithToast
-        successMessage="Summary updated"
-        action={async (formData) => {
-          "use server";
-          const summary = formData.get("summary") as string;
-          await updateResumeSummary(resumeId, summary);
-        }}
-      >
-        <>
-          <textarea
+
+      <Card className="p-8 space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">Summary</h2>
+          <p className="text-sm text-muted-foreground">
+            Short professional overview used at the top of your resume.
+          </p>
+        </div>
+
+        <FormWithToast
+          successMessage="Summary updated"
+          action={async (formData) => {
+            "use server";
+            const summary = formData.get("summary") as string;
+            await updateResumeSummary(resumeId, summary);
+          }}
+        >
+          <Textarea
             name="summary"
             defaultValue={content.summary ?? ""}
             rows={6}
-            className="w-full border border-border/60 rounded-xl p-4 text-sm bg-background transition focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/20"
           />
 
           <div className="flex justify-end">
             <Button variant="primary">Save</Button>
           </div>
-        </>
-      </FormWithToast>
-
+        </FormWithToast>
+      </Card>
       {/* ================= SKILLS ================= */}
-      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+      {/* ================= SKILLS ================= */}
+
+      <Card className="p-8 space-y-6">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">Skills</h2>
           <p className="text-sm text-muted-foreground">
@@ -126,13 +136,23 @@ export default async function ResumePage({ params }: Props) {
         {skills.length === 0 ? (
           <p className="text-sm text-muted-foreground">No skills added yet.</p>
         ) : (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {skills.map((skill, index) => (
               <div
                 key={index}
-                className="bg-muted/40 px-3 py-1.5 rounded-full text-sm flex items-center gap-2 border border-border/50 transition hover:bg-muted/60"
+                className="
+            flex items-center gap-2
+            rounded-full
+            border border-border
+            bg-muted
+            px-3 py-1.5
+            text-sm
+            transition-colors
+            hover:bg-muted/80
+          "
               >
                 <span className="font-medium">{skill}</span>
+
                 <FormWithToast
                   successMessage="Skill removed"
                   action={async () => {
@@ -140,7 +160,10 @@ export default async function ResumePage({ params }: Props) {
                     await removeSkill(resumeId, index);
                   }}
                 >
-                  <Button variant="ghost" className="text-red-500 text-xs">
+                  <Button
+                    variant="ghost"
+                    className="h-6 px-2 text-xs text-destructive"
+                  >
                     ×
                   </Button>
                 </FormWithToast>
@@ -158,15 +181,21 @@ export default async function ResumePage({ params }: Props) {
             await addSkill(resumeId, skill);
           }}
         >
-          <div className="flex gap-3 pt-4 border-t">
-            <Input name="skill" placeholder="Add skill (e.g., React)" />
+          <div className="pt-4 border-t border-border flex gap-3">
+            <Input
+              name="skill"
+              placeholder="Add skill (e.g., React)"
+              className="max-w-sm"
+            />
+
             <Button variant="primary">Add</Button>
           </div>
         </FormWithToast>
       </Card>
-
       {/* ================= EDUCATION ================= */}
-      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+      {/* ================= EDUCATION ================= */}
+
+      <Card className="p-8 space-y-6">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">Education</h2>
           <p className="text-sm text-muted-foreground">
@@ -179,15 +208,23 @@ export default async function ResumePage({ params }: Props) {
             No education added yet.
           </p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {education.map((edu, index) => (
               <div
                 key={index}
-                className="border border-border/50 rounded-xl p-6 bg-muted/30 transition hover:bg-muted/40"
+                className="
+            rounded-xl
+            border border-border
+            bg-muted
+            p-5
+            transition-colors
+            hover:bg-muted/80
+          "
               >
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-4">
                   <div className="space-y-1">
-                    <h3 className="font-medium text-base">{edu.degree}</h3>
+                    <h3 className="font-medium">{edu.degree}</h3>
+
                     <p className="text-sm text-muted-foreground">
                       {edu.institution} — {edu.duration}
                     </p>
@@ -200,7 +237,10 @@ export default async function ResumePage({ params }: Props) {
                       await removeEducation(resumeId, index);
                     }}
                   >
-                    <Button variant="ghost" className="text-red-500 text-sm">
+                    <Button
+                      variant="ghost"
+                      className="text-destructive text-sm"
+                    >
                       Remove
                     </Button>
                   </FormWithToast>
@@ -214,6 +254,7 @@ export default async function ResumePage({ params }: Props) {
           successMessage="Education added"
           action={async (formData) => {
             "use server";
+
             await addEducation(resumeId, {
               institution: formData.get("institution") as string,
               degree: formData.get("degree") as string,
@@ -221,9 +262,11 @@ export default async function ResumePage({ params }: Props) {
             });
           }}
         >
-          <div className="space-y-3 pt-4 border-t">
+          <div className="pt-4 border-t border-border space-y-3">
             <Input name="degree" placeholder="Degree" />
+
             <Input name="institution" placeholder="Institution" />
+
             <Input name="duration" placeholder="Duration" />
 
             <div className="flex justify-end">
@@ -233,7 +276,9 @@ export default async function ResumePage({ params }: Props) {
         </FormWithToast>
       </Card>
       {/* ================= EXPERIENCE ================= */}
-      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+      {/* ================= EXPERIENCE ================= */}
+
+      <Card className="p-8 space-y-6">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">Experience</h2>
           <p className="text-sm text-muted-foreground">
@@ -246,15 +291,24 @@ export default async function ResumePage({ params }: Props) {
             No experience added yet.
           </p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {experience.map((exp, index) => (
               <div
                 key={index}
-                className="border border-border/50 rounded-xl p-6 bg-muted/30 space-y-3 transition hover:bg-muted/40"
+                className="
+            rounded-xl
+            border border-border
+            bg-muted
+            p-5
+            space-y-2
+            transition-colors
+            hover:bg-muted/80
+          "
               >
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-4">
                   <div className="space-y-1">
-                    <h3 className="font-medium text-base">{exp.role}</h3>
+                    <h3 className="font-medium">{exp.role}</h3>
+
                     <p className="text-sm text-muted-foreground">
                       {exp.company} — {exp.duration}
                     </p>
@@ -267,13 +321,16 @@ export default async function ResumePage({ params }: Props) {
                       await removeExperience(resumeId, index);
                     }}
                   >
-                    <Button variant="ghost" className="text-red-500 text-sm">
+                    <Button
+                      variant="ghost"
+                      className="text-destructive text-sm"
+                    >
                       Remove
                     </Button>
                   </FormWithToast>
                 </div>
 
-                <p className="text-sm leading-relaxed text-foreground/90">
+                <p className="text-sm text-foreground/90 leading-relaxed">
                   {exp.description}
                 </p>
               </div>
@@ -285,6 +342,7 @@ export default async function ResumePage({ params }: Props) {
           successMessage="Experience added"
           action={async (formData) => {
             "use server";
+
             await addExperience(resumeId, {
               company: formData.get("company") as string,
               role: formData.get("role") as string,
@@ -293,55 +351,65 @@ export default async function ResumePage({ params }: Props) {
             });
           }}
         >
-          <Input name="role" placeholder="Role" />
-          <Input name="company" placeholder="Company" />
-          <Input name="duration" placeholder="Duration" />
-          <textarea
-            name="description"
-            placeholder="Description"
-            className="border border-border/60 p-3 rounded-xl w-full text-sm bg-background focus:ring-2 focus:ring-black/10 transition"
-          />
+          <div className="pt-4 border-t border-border space-y-3">
+            <Input name="role" placeholder="Role" />
 
-          <div className="flex justify-end pt-2">
-            <Button variant="primary">Add Experience</Button>
+            <Input name="company" placeholder="Company" />
+
+            <Input name="duration" placeholder="Duration" />
+
+            <Textarea name="description" placeholder="Description" rows={4} />
+
+            <div className="flex justify-end">
+              <Button variant="primary">Add Experience</Button>
+            </div>
           </div>
         </FormWithToast>
       </Card>
-
       {/* ================= VERSION HISTORY ================= */}
+      {/* ================= VERSION HISTORY ================= */}
+
       <Card className="p-8 space-y-6">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">
             Version History
           </h2>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-muted-foreground">
             Tailored resumes generated for different jobs.
           </p>
         </div>
 
         {tailoredVersions.length === 0 ? (
-          <div className="text-center py-6 text-neutral-500 text-sm">
+          <div className="text-sm text-muted-foreground py-4">
             No tailored versions yet.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {tailoredVersions.map((version) => (
               <div
                 key={version.id}
-                className="rounded-xl border border-neutral-200/70 bg-white/70 p-5 flex justify-between items-start transition hover:shadow-sm"
+                className="
+            rounded-xl
+            border border-border
+            bg-muted
+            p-5
+            flex justify-between items-start gap-4
+            transition-colors
+            hover:bg-muted/80
+          "
               >
                 <div className="space-y-1">
                   <p className="font-medium">
                     Tailored for {version.job?.title}
                   </p>
 
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-muted-foreground">
                     {version.job?.company}
                     {version.job?.location && ` — ${version.job.location}`}
                   </p>
                 </div>
 
-                <span className="text-xs text-neutral-400">
+                <span className="text-xs text-muted-foreground">
                   {new Date(version.createdAt).toLocaleString()}
                 </span>
               </div>
@@ -351,7 +419,9 @@ export default async function ResumePage({ params }: Props) {
       </Card>
 
       {/* ================= CREATE TAILORED ================= */}
-      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+      {/* ================= CREATE TAILORED ================= */}
+
+      <Card className="p-8 space-y-6">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">
             Create Tailored Version
@@ -365,32 +435,34 @@ export default async function ResumePage({ params }: Props) {
           successMessage="Tailored version created"
           action={async (formData) => {
             "use server";
+
             const jobId = formData.get("jobId") as string;
             if (!jobId) return;
+
             await createTailoredVersionForJob(resumeId, jobId);
           }}
         >
           <div className="space-y-4">
-            <select
-              name="jobId"
-              className="border border-border/60 rounded-xl p-3 w-full text-sm bg-background focus:ring-2 focus:ring-black/10 transition"
-              required
-            >
+            <Select name="jobId" required>
               <option value="">Select a job to tailor resume</option>
+
               {jobs.map((job) => (
                 <option key={job.id} value={job.id}>
                   {job.title} at {job.company}
                 </option>
               ))}
-            </select>
+            </Select>
 
-            <Button variant="primary">Create Tailored Version</Button>
+            <div className="flex justify-end">
+              <Button variant="primary">Create Tailored Version</Button>
+            </div>
           </div>
         </FormWithToast>
       </Card>
-
       {/* ================= JOBS ================= */}
-      <Card className="p-8 space-y-6 border border-border/60 rounded-2xl shadow-sm bg-background">
+      {/* ================= JOBS ================= */}
+
+      <Card className="p-8 space-y-6">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">Jobs</h2>
           <p className="text-sm text-muted-foreground">
@@ -401,14 +473,23 @@ export default async function ResumePage({ params }: Props) {
         {jobs.length === 0 ? (
           <p className="text-sm text-muted-foreground">No jobs added yet.</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {jobs.map((job) => (
               <div
                 key={job.id}
-                className="border border-border/50 rounded-xl p-6 bg-muted/30 flex justify-between items-start transition hover:bg-muted/40"
+                className="
+            rounded-xl
+            border border-border
+            bg-muted
+            p-5
+            flex justify-between items-start gap-4
+            transition-colors
+            hover:bg-muted/80
+          "
               >
                 <div className="space-y-1">
-                  <h3 className="font-medium text-base">{job.title}</h3>
+                  <h3 className="font-medium">{job.title}</h3>
+
                   <p className="text-sm text-muted-foreground">{job.company}</p>
                 </div>
 
@@ -419,7 +500,7 @@ export default async function ResumePage({ params }: Props) {
                     await deleteJob(job.id);
                   }}
                 >
-                  <Button variant="ghost" className="text-red-500 text-sm">
+                  <Button variant="ghost" className="text-destructive text-sm">
                     Delete
                   </Button>
                 </FormWithToast>
@@ -432,6 +513,7 @@ export default async function ResumePage({ params }: Props) {
           successMessage="Job created"
           action={async (formData) => {
             "use server";
+
             await createJob({
               title: formData.get("title") as string,
               company: formData.get("company") as string,
@@ -441,19 +523,19 @@ export default async function ResumePage({ params }: Props) {
             });
           }}
         >
-          <div className="space-y-3 pt-6 border-t">
+          <div className="pt-4 border-t border-border space-y-3">
             <Input name="title" placeholder="Job Title" />
             <Input name="company" placeholder="Company" />
             <Input name="location" placeholder="Location" />
             <Input name="jobLink" placeholder="Job Link" />
 
-            <textarea
+            <Textarea
               name="description"
               placeholder="Job Description"
-              className="border border-border/60 p-3 rounded-xl w-full text-sm bg-background focus:ring-2 focus:ring-black/10 transition"
+              rows={4}
             />
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end">
               <Button variant="primary">Add Job</Button>
             </div>
           </div>

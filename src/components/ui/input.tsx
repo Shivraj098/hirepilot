@@ -10,9 +10,11 @@ export default function Input({
     <input
       disabled={disabled}
       className={clsx(
-        "w-full rounded-xl border border-neutral-200/80 bg-white/80 backdrop-blur-sm px-4 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400",
-        "shadow-sm transition-all duration-200",
-        "focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/30 focus:bg-white",
+        "w-full h-10 rounded-xl border",
+        "border-input bg-background text-foreground",
+        "px-4 text-sm",
+        "transition-all duration-200",
+        "focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-ring",
         "disabled:opacity-60 disabled:cursor-not-allowed",
         className
       )}

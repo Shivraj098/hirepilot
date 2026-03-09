@@ -12,12 +12,12 @@ export default function MotionWrapper({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{
-        duration: 0.35,
-        ease: [0.22, 1, 0.36, 1], // smoother custom cubic-bezier
+        duration: 0.28,
+        ease: [0.22, 1, 0.36, 1],
         delay,
       }}
       layout
