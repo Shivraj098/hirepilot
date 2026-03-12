@@ -24,47 +24,47 @@ export default function DashboardLayout({
 
         <nav className="space-y-1 text-sm">
 
-          <Link
-            href="/dashboard"
-            className={`block px-3 py-2 rounded-lg transition-colors ${
-              pathname === "/dashboard"
-                ? "bg-sidebar-accent text-foreground font-medium"
-                : "text-muted-foreground hover:bg-sidebar-accent"
-            }`}
-          >
-            Dashboard
-          </Link>
+  <Link
+    href="/dashboard"
+    className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+      pathname === "/dashboard"
+        ? "bg-sidebar-accent text-foreground font-medium"
+        : "text-muted-foreground hover:bg-sidebar-accent"
+    }`}
+  >
+    Dashboard
+  </Link>
 
-          <Link
-            href="/dashboard/resumes"
-            className={`block px-3 py-2 rounded-lg transition-colors ${
-              pathname.includes("/resumes")
-                ? "bg-sidebar-accent text-foreground font-medium"
-                : "text-muted-foreground hover:bg-sidebar-accent"
-            }`}
-          >
-            Resumes
-          </Link>
+  <Link
+    href="/dashboard/resumes"
+    className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+      pathname.includes("/resumes")
+        ? "bg-sidebar-accent text-foreground font-medium"
+        : "text-muted-foreground hover:bg-sidebar-accent"
+    }`}
+  >
+    Resumes
+  </Link>
 
-          <Link
-            href="/dashboard/jobs"
-            className={`block px-3 py-2 rounded-lg transition-colors ${
-              pathname.includes("/jobs")
-                ? "bg-sidebar-accent text-foreground font-medium"
-                : "text-muted-foreground hover:bg-sidebar-accent"
-            }`}
-          >
-            Jobs
-          </Link>
+  <Link
+    href="/dashboard/jobs"
+    className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+      pathname.includes("/jobs")
+        ? "bg-sidebar-accent text-foreground font-medium"
+        : "text-muted-foreground hover:bg-sidebar-accent"
+    }`}
+  >
+    Jobs
+  </Link>
 
-        </nav>
+</nav>
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col">
+      <div className="text-base font-semibold tracking-tight">
 
         {/* Header */}
-        <header className="h-16 border-b border-border bg-background flex items-center justify-between px-8">
+        <header className="h-14 border-b border-border bg-background flex items-center justify-between px-6">
 
           <h1 className="text-base font-semibold tracking-tight">
             Dashboard

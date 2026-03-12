@@ -69,7 +69,7 @@ export default async function JobDetailPage({ params }: Props) {
     <div className="p-8 max-w-4xl space-y-12">
       {/* HEADER */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{job.title}</h1>
+        <h1 className="text-lg font-semibold tracking-tight">{job.title}</h1>
 
         <p className="text-sm text-muted-foreground">
           {job.company}
@@ -127,16 +127,27 @@ export default async function JobDetailPage({ params }: Props) {
             </p>
           </div>
 
-          <div className="text-sm">
-            Match Score:
-            <span className="font-semibold ml-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Match Score</p>
+
+            <span
+              className="
+      text-sm
+      font-semibold
+      rounded-full
+      border border-border
+      bg-background
+      px-3 py-1
+    "
+            >
               {skillGap.matchPercentage}%
             </span>
           </div>
+          <div className="border-t border-border" />
 
           {/* MATCHED */}
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h3 className="text-sm font-medium">Matched Skills</h3>
 
             {skillGap.matchedSkills.length === 0 ? (
@@ -165,7 +176,7 @@ export default async function JobDetailPage({ params }: Props) {
 
           {/* MISSING */}
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h3 className="text-sm font-medium">Missing Skills</h3>
 
             {skillGap.missingSkills.length === 0 ? (
@@ -180,7 +191,8 @@ export default async function JobDetailPage({ params }: Props) {
                 border border-border
                 bg-muted
                 px-3 py-1.5
-                text-sm
+                text-xs
+                font-medium
               "
                   >
                     {skill}
@@ -225,10 +237,11 @@ export default async function JobDetailPage({ params }: Props) {
                   <span
                     className="
                 text-xs
+                font-medium
                 rounded-full
                 border border-border
                 bg-background
-                px-2 py-1
+                px-3 py-1
               "
                   >
                     {gap.priority}
@@ -334,7 +347,18 @@ export default async function JobDetailPage({ params }: Props) {
                     font-medium
                   "
                       >
-                        ATS {ats.score}%
+                        <span
+                          className="
+    text-xs
+    font-medium
+    rounded-full
+    border border-border
+    bg-background
+    px-3 py-1
+  "
+                        >
+                          ATS {ats.score}%
+                        </span>
                       </div>
                     )}
                   </div>

@@ -12,8 +12,12 @@ export default async function DashboardHome() {
   const user = await getCurrentUser();
 
   if (!user?.id) {
-    return <div>Loading...</div>;
-  }
+  return (
+    <Card className="p-6 text-sm text-muted-foreground">
+      Loading dashboard...
+    </Card>
+  );
+}
 
   const [resumes, jobs, versionCount] = await Promise.all([
     prisma.resume.findMany({
@@ -39,7 +43,7 @@ export default async function DashboardHome() {
   ]);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {/* HEADER */}
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
@@ -128,9 +132,17 @@ export default async function DashboardHome() {
         {/* Resume list */}
 
         {resumes.length === 0 ? (
-          <Card className="p-6 text-sm text-muted-foreground">
-            No resumes yet.
-          </Card>
+          <Card className="p-6 space-y-1">
+
+  <p className="text-sm font-medium">
+    No resumes yet
+  </p>
+
+  <p className="text-sm text-muted-foreground">
+    Create a resume to start tailoring for jobs.
+  </p>
+
+</Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {resumes.map((resume) => (
@@ -175,9 +187,17 @@ export default async function DashboardHome() {
         {/* Job list */}
 
         {jobs.length === 0 ? (
-          <Card className="p-6 text-sm text-muted-foreground">
-            No jobs added yet.
-          </Card>
+          <Card className="p-6 space-y-1">
+
+  <p className="text-sm font-medium">
+    No jobs yet
+  </p>
+
+  <p className="text-sm text-muted-foreground">
+    Add a job to generate tailored resumes.
+  </p>
+
+</Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {jobs.map((job) => (

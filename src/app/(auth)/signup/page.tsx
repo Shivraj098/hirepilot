@@ -38,7 +38,7 @@ export default function SignupPage() {
         onSubmit={handleSubmit}
         className="space-y-4 w-80 p-6 border rounded-lg"
       >
-        <h1 className="text-xl font-semibold">Create Account</h1>
+        <h1 className="text-lg font-semibold">Create Account</h1>
 
         <input
           type="text"
