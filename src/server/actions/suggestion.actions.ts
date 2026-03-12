@@ -4,65 +4,122 @@ import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
-import { calculateSkillGap } from "@/server/ai/skill-gap";
 
-export async function applySuggestion(suggestionId: string) {
+
+import { calculateATS } from "@/server/ai/ats-engine";
+
+export async function applySuggestion(
+  suggestionId: string
+) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
 
-  const suggestion = await prisma.aISuggestion.findUnique({
-    where: { id: suggestionId },
-    include: { resumeVersion: true },
-  });
+  const suggestion =
+    await prisma.aISuggestion.findUnique({
+      where: { id: suggestionId },
+      include: { resumeVersion: true },
+    });
 
-  if (!suggestion) throw new Error("Suggestion not found");
-  if (suggestion.resumeVersion.userId !== user.id)
+  if (!suggestion)
+    throw new Error("Suggestion not found");
+
+  if (
+    suggestion.resumeVersion.userId !== user.id
+  )
     throw new Error("Forbidden");
 
-  const resumeVersion = suggestion.resumeVersion;
-  if (!resumeVersion.jobId)
-    throw new Error("No job linked to this resume version");
+  const resumeVersion =
+    suggestion.resumeVersion;
 
-  const content = (resumeVersion.content ?? {}) as Record<string, unknown>;
+  if (!resumeVersion.jobId)
+    throw new Error(
+      "No job linked to this resume version"
+    );
+
+  const content =
+    (resumeVersion.content ??
+      {}) as Record<string, unknown>;
+
   const updatedContent = {
     ...content,
-    [suggestion.section]: suggestion.suggestedContent,
+    [suggestion.section]:
+      suggestion.suggestedContent,
   };
 
+  // ✅ update content
   await prisma.resumeVersion.update({
     where: { id: resumeVersion.id },
-    data: { content: updatedContent as Prisma.InputJsonValue },
+    data: {
+      content:
+        updatedContent as Prisma.InputJsonValue,
+    },
   });
 
+  // ✅ mark suggestion applied
   await prisma.aISuggestion.update({
     where: { id: suggestionId },
     data: { applied: true },
   });
 
   const job = await prisma.job.findFirst({
-    where: { id: resumeVersion.jobId, userId: user.id },
+    where: {
+      id: resumeVersion.jobId,
+      userId: user.id,
+    },
   });
 
-  if (!job) throw new Error("Job not found");
+  if (!job)
+    throw new Error("Job not found");
 
-  const skillGap = calculateSkillGap(updatedContent, job.description);
+  // =====================
+  // ATS FIRST
+  // =====================
+
+  const ats = calculateATS(
+    updatedContent,
+    job.description
+  );
+
+  // =====================
+  // SKILL GAP SECOND
+  // =====================
+
+ 
+
+  // =====================
+  // SAVE ATS
+  // =====================
 
   await prisma.aTSResult.upsert({
-    where: { resumeVersionId: resumeVersion.id },
-    update: {
-      score: skillGap.matchPercentage,
-      matchedKeywords: skillGap.matchedSkills,
-      missingKeywords: skillGap.missingSkills,
-      weakKeywords: [],
+    where: {
+      resumeVersionId:
+        resumeVersion.id,
     },
+
+    update: {
+      score: ats.score,
+      matchedKeywords:
+        ats.matchedKeywords,
+      missingKeywords:
+        ats.missingKeywords,
+      weakKeywords:
+        ats.weakKeywords,
+    },
+
     create: {
-      resumeVersionId: resumeVersion.id,
-      score: skillGap.matchPercentage,
-      matchedKeywords: skillGap.matchedSkills,
-      missingKeywords: skillGap.missingSkills,
-      weakKeywords: [],
+      resumeVersionId:
+        resumeVersion.id,
+      score: ats.score,
+      matchedKeywords:
+        ats.matchedKeywords,
+      missingKeywords:
+        ats.missingKeywords,
+      weakKeywords:
+        ats.weakKeywords,
     },
   });
 
-  revalidatePath(`/dashboard/jobs/${resumeVersion.jobId}`);
+  revalidatePath(
+    `/dashboard/jobs/${resumeVersion.jobId}`
+  );
 }

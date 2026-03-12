@@ -1,4 +1,5 @@
 import { extractResumeSkills, extractJobKeywords } from "./extractors";
+import { calculateATS } from "./ats-engine";
 
 function normalize(text: string): string {
   return text
@@ -22,49 +23,52 @@ export function calculateSkillGap(
   const rawResumeSkills = extractResumeSkills(resumeContent);
   const rawJobSkills = extractJobKeywords(jobDescription);
 
-  const resumeSkills = uniqueArray(rawResumeSkills.map((s) => normalize(s)));
+  const resumeSkills = uniqueArray(
+    rawResumeSkills.map((s) => normalize(s))
+  );
 
-  const jobSkillsNormalized = rawJobSkills.map((s) => normalize(s));
+  const jobSkillsNormalized = rawJobSkills.map((s) =>
+    normalize(s)
+  );
 
   const jobFrequencyMap: Record<string, number> = {};
 
   for (const skill of jobSkillsNormalized) {
-    jobFrequencyMap[skill] = (jobFrequencyMap[skill] || 0) + 1;
+    jobFrequencyMap[skill] =
+      (jobFrequencyMap[skill] || 0) + 1;
   }
 
-  const uniqueJobSkills = uniqueArray(jobSkillsNormalized);
+  const uniqueJobSkills = uniqueArray(
+    jobSkillsNormalized
+  );
 
   const matchedSkills: string[] = [];
   const missingSkills: string[] = [];
 
-  let weightedMatchedScore = 0;
-  let weightedTotalScore = 0;
-
+  // ✅ match logic
   for (const jobSkill of uniqueJobSkills) {
-    const frequency = jobFrequencyMap[jobSkill] || 1;
-    weightedTotalScore += frequency;
-
-    const matched = resumeSkills.some((resumeSkill) =>
-      isPartialMatch(resumeSkill, jobSkill),
+    const matched = resumeSkills.some(
+      (resumeSkill) =>
+        isPartialMatch(resumeSkill, jobSkill)
     );
 
     if (matched) {
       matchedSkills.push(jobSkill);
-      weightedMatchedScore += frequency;
     } else {
       missingSkills.push(jobSkill);
     }
   }
 
-  const matchPercentage =
-    weightedTotalScore === 0
-      ? 0
-      : Math.round((weightedMatchedScore / weightedTotalScore) * 100);
+  // ✅ ATS engine used for score
+  const ats = calculateATS(
+    resumeContent,
+    jobDescription,
+  );
 
   return {
     matchedSkills,
     missingSkills,
-    matchPercentage,
+    matchPercentage: ats.score,
     jobFrequencyMap,
   };
 }
