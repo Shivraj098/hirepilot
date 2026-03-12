@@ -67,6 +67,12 @@ model ResumeVersion {
   versionType  VersionType @default(BASE)
   parentId     String?
 
+  
+  label        String?
+  createdBy    String?   // "AI" | "USER" | "SYSTEM"
+  notes        String?
+  scoreSnapshot Int?
+
   createdAt    DateTime @default(now())
 
   resume       Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
@@ -87,10 +93,22 @@ model Job {
   location     String?
   jobLink      String?
   description  String
+
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+
   status       JobStatus         @default(SAVED)
   notes        String?
+
+  // NEW 
+  appliedAt    DateTime?
+  interviewAt  DateTime?
+  offerAt      DateTime?
+  rejectedAt   DateTime?
+
+  priority     String?   // LOW / MEDIUM / HIGH
+  source       String?   // LinkedIn / Referral / Company site
+  isFavorite   Boolean   @default(false)
 
   user         User              @relation(fields: [userId], references: [id])
   applications JobApplication[]
@@ -98,22 +116,30 @@ model Job {
   skillGaps    SkillGap[]
   interviewPreps InterviewPrep[]
 }
-
 model JobApplication {
   id           String      @id @default(uuid())
   userId       String
   jobId        String
   resumeVersionId String
+
   status       JobStatus   @default(SAVED)
   notes        String?
+
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+
+  //  NEW
+  appliedAt    DateTime?
+  interviewAt  DateTime?
+  offerAt      DateTime?
+  rejectedAt   DateTime?
+
+  scoreSnapshot Int?
 
   user         User        @relation(fields: [userId], references: [id])
   job          Job         @relation(fields: [jobId], references: [id])
   resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id])
 }
-
 model ATSResult {
   id               String   @id @default(uuid())
   resumeVersionId  String   @unique
@@ -153,15 +179,29 @@ model SkillGap {
 model InterviewPrep {
   id            String     @id @default(uuid())
   jobId         String
+
   questions     Json
-  type          String
   starDrafts    Json
   technicalTopics Json
+
+  type          String
+
   createdAt     DateTime   @default(now())
 
-  job           Job        @relation(fields: [jobId], references: [id])
-  
+  // NEW
 
+  difficulty    String?   // EASY / MEDIUM / HARD
+  category      String?   // HR / TECH / MIXED
+
+  notes         String?
+
+  rating        Int?      // future user feedback
+
+  summary       String?   // AI summary of prep
+
+  status        String?   // NEW / REVIEWED / PRACTICED
+
+  job           Job        @relation(fields: [jobId], references: [id])
 }
 
 
