@@ -8,6 +8,8 @@ export type AIInterviewPrep = {
   technicalTopics: string[];
   questions: string[];
   starDrafts: string[];
+  difficulty: string;
+  category: string;
 };
 
 function safeParseJSON(content: string): AIInterviewPrep {

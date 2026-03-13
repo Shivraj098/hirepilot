@@ -1,0 +1,77 @@
+"use server";
+
+import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
+import { parsePdf } from "@/server/resume-parser/parse-pdf";
+import { parseDocx } from "@/server/resume-parser/parse-docx";
+import { extractResumeJson } from "@/server/ai/resume-extract";
+
+export async function uploadResume(
+  file: File,
+  userId: string,
+  resumeId: string
+) {
+  try {
+    const buffer =
+      Buffer.from(
+        await file.arrayBuffer()
+      );
+
+    let text = "";
+
+    if (
+      file.type ===
+      "application/pdf"
+    ) {
+      text = await parsePdf(
+        buffer
+      );
+    } else if (
+      file.type.includes(
+        "word"
+      )
+    ) {
+      text = await parseDocx(
+        buffer
+      );
+    } else {
+      throw new Error(
+        "Unsupported file"
+      );
+    }
+
+    const json =
+      await extractResumeJson(
+        text
+      );
+
+    if (!json) {
+      throw new Error(
+        "AI parse failed"
+      );
+    }
+
+    const version =
+      await prisma.resumeVersion.create(
+        {
+          data: {
+            resumeId,
+            userId,
+            
+            content: json as unknown as Prisma.InputJsonValue,
+            versionType: "BASE",
+            createdBy: "AI",
+          },
+        }
+      );
+
+    return version;
+  } catch (err) {
+    console.error(
+      "UPLOAD RESUME ERROR",
+      err
+    );
+
+    return null;
+  }
+}

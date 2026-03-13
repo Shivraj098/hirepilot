@@ -1,38 +1,56 @@
-type InterviewPrepData = {
+import { aiJsonCompletion } from "./client";
+
+export type InterviewPrepResult = {
   questions: string[];
-  starDrafts: string[];
+
   technicalTopics: string[];
+
+  starDrafts: string[];
+
+  difficulty: string;
+
+  category: string;
 };
 
-export function generateInterviewPrep(
-  jobTitle: string,
+export async function generateInterviewPrep(
   jobDescription: string,
-  matchedSkills: string[]
-): InterviewPrepData {
-  const technicalTopics = matchedSkills.length
-    ? matchedSkills
-    : ["System Design"];
+  title: string,
+  keywords: string[],
+): Promise<InterviewPrepResult | null> {
+  const prompt = `
+You are interview coach AI.
 
-  const technicalQuestions = technicalTopics.map(
-    (skill) => `Explain your hands-on experience with ${skill}.`
-  );
+Generate interview preparation.
 
-  const behavioralQuestions = [
-    `Why are you interested in the ${jobTitle} role?`,
-    "Describe a challenging technical problem you solved.",
-    "Tell me about a time you worked under tight deadlines.",
-  ];
+Return JSON.
 
-  const starDrafts = [
-    "Situation: Brief context of the challenge.",
-    "Task: What responsibility you had.",
-    "Action: Steps you took to solve it.",
-    "Result: Measurable outcome achieved.",
-  ];
+Format:
 
-  return {
-    questions: [...technicalQuestions, ...behavioralQuestions],
-    starDrafts,
-    technicalTopics,
-  };
+{
+  "questions": string[],
+  "technicalTopics": string[],
+  "starDrafts": string[],
+  "difficulty": string,
+  "category": string
+}
+
+difficulty = Easy | Medium | Hard
+category = Technical | HR | Mixed
+
+
+Job title:
+${title}
+
+Keywords:
+${keywords.join(", ")}
+
+Job:
+${jobDescription}
+`;
+
+  const result = await aiJsonCompletion<InterviewPrepResult>(prompt, {
+    temperature: 0.2,
+  });
+
+  return result;
 }
