@@ -1,5 +1,5 @@
 import { aiJsonCompletion } from "./client";
-import { parseResumeContent } from "./utils/resume-parser";
+import { parseResumeContent } from "../utils/resume-parser";
 import { calculateATS } from "./ats-engine";
 
 type ExperienceEntry = {
@@ -24,14 +24,11 @@ export type ResumeContent = {
 
 export async function tailorResumeWithAI(
   resumeContent: ResumeContent,
-  jobDescription: string
+  jobDescription: string,
 ): Promise<ResumeContent> {
   const parsed = parseResumeContent(resumeContent);
 
-  const ats = calculateATS(
-    parsed,
-    jobDescription
-  );
+  const ats = calculateATS(parsed, jobDescription);
 
   const prompt = `
 You are an expert resume optimizer.
@@ -63,30 +60,20 @@ Return JSON only.
 `;
 
   try {
-    const result =
-      await aiJsonCompletion<ResumeContent>(
-        prompt,
-        { temperature: 0.2 }
-      );
+    const result = await aiJsonCompletion<ResumeContent>(prompt, {
+      temperature: 0.2,
+    });
 
     if (!result) return parsed;
 
     return {
-      summary:
-        result.summary ??
-        parsed.summary,
+      summary: result.summary ?? parsed.summary,
 
-      skills:
-        result.skills ??
-        parsed.skills,
+      skills: result.skills ?? parsed.skills,
 
-      experience:
-        result.experience ??
-        parsed.experience,
+      experience: result.experience ?? parsed.experience,
 
-      education:
-        result.education ??
-        parsed.education,
+      education: result.education ?? parsed.education,
     };
   } catch {
     return parsed;

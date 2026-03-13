@@ -5,3 +5,6 @@ export interface ExtractedJob {
   skills: string[];
   location?: string;
 }
+
+export type JobExtractResult =
+  ExtractedJob;

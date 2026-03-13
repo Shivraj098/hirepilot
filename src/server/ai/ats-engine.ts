@@ -1,4 +1,4 @@
-import { parseResumeContent } from "./utils/resume-parser";
+import { parseResumeContent } from "../utils/resume-parser";
 
 type ATSResultData = {
   score: number;
@@ -20,29 +20,21 @@ function extractKeywords(text: string): string[] {
 
 export function calculateATS(
   resumeContent: unknown,
-  jobDescription: string
+  jobDescription: string,
 ): ATSResultData {
   const resume = parseResumeContent(resumeContent);
 
-  const resumeSkills = resume.skills.map((s) =>
-    normalize(s)
-  );
+  const resumeSkills = resume.skills.map((s) => normalize(s));
 
   const jobKeywords = extractKeywords(jobDescription);
 
-  const uniqueKeywords = Array.from(
-    new Set(jobKeywords)
-  );
+  const uniqueKeywords = Array.from(new Set(jobKeywords));
 
   const matched: string[] = [];
   const missing: string[] = [];
 
   for (const kw of uniqueKeywords) {
-    if (
-      resumeSkills.some((s) =>
-        s.includes(kw)
-      )
-    ) {
+    if (resumeSkills.some((s) => s.includes(kw))) {
       matched.push(kw);
     } else {
       missing.push(kw);
@@ -51,10 +43,7 @@ export function calculateATS(
 
   const total = matched.length + missing.length;
 
-  const score =
-    total === 0
-      ? 0
-      : Math.round((matched.length / total) * 100);
+  const score = total === 0 ? 0 : Math.round((matched.length / total) * 100);
 
   return {
     score,

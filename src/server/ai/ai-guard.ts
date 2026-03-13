@@ -1,10 +1,13 @@
+import { AI_LIMIT,AI_WINDOW_MS } from "../config/constants";
+
 const calls = new Map<
   string,
   { count: number; time: number }
 >();
 
-const LIMIT = 20;
-const WINDOW = 60 * 1000; // 1 min
+
+const LIMIT = AI_LIMIT;
+const WINDOW = AI_WINDOW_MS;
 
 export function checkAIGuard(
   userId: string

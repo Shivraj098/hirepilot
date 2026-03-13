@@ -14,11 +14,9 @@ import { recalculateATS } from "@/server/ai/recalculate-ats";
 import type {
   ResumeContent,
   StructuredResumeContent,
-} from "@/types/resume.types";
+} from "@/server/types/resume.types";
 
 import type { InterviewPrepResult } from "@/server/ai/interview-generator";
-
-
 
 /* =========================================================
    CREATE TAILORED VERSION WITH AI
@@ -33,22 +31,20 @@ export async function createTailoredVersionWithAI(
 
   // ---------- BASE VERSION ----------
 
-  const baseVersion =
-    await prisma.resumeVersion.findFirst({
-      where: {
-        resumeId,
-        userId: user.id,
-        versionType: "BASE",
-      },
-    });
+  const baseVersion = await prisma.resumeVersion.findFirst({
+    where: {
+      resumeId,
+      userId: user.id,
+      versionType: "BASE",
+    },
+  });
 
-  const job =
-    await prisma.job.findFirst({
-      where: {
-        id: jobId,
-        userId: user.id,
-      },
-    });
+  const job = await prisma.job.findFirst({
+    where: {
+      id: jobId,
+      userId: user.id,
+    },
+  });
 
   if (!baseVersion || !job) {
     throw new Error("Invalid data");
@@ -56,47 +52,38 @@ export async function createTailoredVersionWithAI(
 
   // ---------- AI TAILOR ----------
 
-  const tailoredContent =
-    await tailorResumeWithAI(
-      baseVersion.content as ResumeContent,
-      job.description,
-    );
+  const tailoredContent = await tailorResumeWithAI(
+    baseVersion.content as ResumeContent,
+    job.description,
+  );
 
   // ---------- CREATE VERSION ----------
 
-  const newVersion =
-    await prisma.resumeVersion.create({
-      data: {
-        resumeId,
-        userId: user.id,
-        jobId,
-        content: tailoredContent,
-        versionType: "TAILORED",
-      },
-    });
+  const newVersion = await prisma.resumeVersion.create({
+    data: {
+      resumeId,
+      userId: user.id,
+      jobId,
+      content: tailoredContent,
+      versionType: "TAILORED",
+    },
+  });
 
   // ---------- ATS ----------
 
-  await recalculateATS(
-    newVersion.id,
-  );
+  await recalculateATS(newVersion.id);
 
   // ---------- SKILL GAP ----------
 
-  const skillGap =
-    calculateSkillGap(
-      tailoredContent,
-      job.description,
-    );
+  const skillGap = calculateSkillGap(tailoredContent, job.description);
 
   // ---------- SUGGESTIONS ----------
 
-  const suggestions =
-    await generateSectionSuggestions(
-      tailoredContent as StructuredResumeContent,
-      skillGap,
-      job.description,
-    );
+  const suggestions = await generateSectionSuggestions(
+    tailoredContent as StructuredResumeContent,
+    skillGap,
+    job.description,
+  );
 
   if (suggestions.length > 0) {
     await prisma.aISuggestion.createMany({
@@ -116,38 +103,35 @@ export async function createTailoredVersionWithAI(
     where: { jobId: job.id },
   });
 
-  const gaps = skillGap.missingSkills.map(
-    (skill) => {
-      const frequency =
-        skillGap.jobFrequencyMap?.[skill] ?? 1;
+  const gaps = skillGap.missingSkills.map((skill) => {
+    const frequency = skillGap.jobFrequencyMap?.[skill] ?? 1;
 
-      let priority: "HIGH" | "MEDIUM" | "LOW";
+    let priority: "HIGH" | "MEDIUM" | "LOW";
 
-      if (frequency >= 2) {
-        priority = "HIGH";
-      } else if (frequency === 1) {
-        priority = "MEDIUM";
-      } else {
-        priority = "LOW";
-      }
+    if (frequency >= 2) {
+      priority = "HIGH";
+    } else if (frequency === 1) {
+      priority = "MEDIUM";
+    } else {
+      priority = "LOW";
+    }
 
-      return {
-        jobId: job.id,
-        skill,
-        priority,
-        estimatedTime:
-          priority === "HIGH"
-            ? "2-4 weeks"
-            : priority === "MEDIUM"
+    return {
+      jobId: job.id,
+      skill,
+      priority,
+      estimatedTime:
+        priority === "HIGH"
+          ? "2-4 weeks"
+          : priority === "MEDIUM"
             ? "1-2 weeks"
             : "Few days",
-        reasoning:
-          frequency >= 2
-            ? "Skill appears multiple times in job description"
-            : "Skill required by job",
-      };
-    },
-  );
+      reasoning:
+        frequency >= 2
+          ? "Skill appears multiple times in job description"
+          : "Skill required by job",
+    };
+  });
 
   if (gaps.length > 0) {
     await prisma.skillGap.createMany({
@@ -164,19 +148,17 @@ export async function createTailoredVersionWithAI(
   let interview: InterviewPrepResult | null = null;
 
   try {
-    interview =
-      await generateAIInterviewPrep(
-        job.title,
-        job.description,
-        skillGap.matchedSkills,
-      );
+    interview = await generateAIInterviewPrep(
+      job.title,
+      job.description,
+      skillGap.matchedSkills,
+    );
   } catch {
-    interview =
-      await generateInterviewPrep(
-        job.title,
-        job.description,
-        skillGap.matchedSkills,
-      );
+    interview = await generateInterviewPrep(
+      job.title,
+      job.description,
+      skillGap.matchedSkills,
+    );
   }
 
   if (interview) {
@@ -194,63 +176,49 @@ export async function createTailoredVersionWithAI(
   return newVersion;
 }
 
-
-
 /* =========================================================
    REGENERATE INTERVIEW
 ========================================================= */
 
-export async function regenerateInterviewPrep(
-  jobId: string,
-) {
+export async function regenerateInterviewPrep(jobId: string) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
 
-  const job =
-    await prisma.job.findUnique({
-      where: { id: jobId },
-      include: {
-        versions: {
-          orderBy: { createdAt: "desc" },
-        },
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    include: {
+      versions: {
+        orderBy: { createdAt: "desc" },
       },
-    });
+    },
+  });
 
   if (!job) throw new Error("Job not found");
 
-  const latestVersion =
-    job.versions[0];
+  const latestVersion = job.versions[0];
 
-  if (!latestVersion)
-    throw new Error("No version");
+  if (!latestVersion) throw new Error("No version");
 
-  const ats =
-    await prisma.aTSResult.findFirst({
-      where: {
-        resumeVersionId:
-          latestVersion.id,
-      },
-    });
+  const ats = await prisma.aTSResult.findFirst({
+    where: {
+      resumeVersionId: latestVersion.id,
+    },
+  });
 
-  let interview: InterviewPrepResult | null =
-    null;
+  let interview: InterviewPrepResult | null = null;
 
   try {
-    interview =
-      await generateAIInterviewPrep(
-        job.title,
-        job.description,
-        (ats?.matchedKeywords as string[]) ??
-          [],
-      );
+    interview = await generateAIInterviewPrep(
+      job.title,
+      job.description,
+      (ats?.matchedKeywords as string[]) ?? [],
+    );
   } catch {
-    interview =
-      await generateInterviewPrep(
-        job.title,
-        job.description,
-        (ats?.matchedKeywords as string[]) ??
-          [],
-      );
+    interview = await generateInterviewPrep(
+      job.title,
+      job.description,
+      (ats?.matchedKeywords as string[]) ?? [],
+    );
   }
 
   await prisma.interviewPrep.deleteMany({
@@ -264,13 +232,10 @@ export async function regenerateInterviewPrep(
         type: "FULL",
         questions: interview.questions,
         starDrafts: interview.starDrafts,
-        technicalTopics:
-          interview.technicalTopics,
+        technicalTopics: interview.technicalTopics,
       },
     });
   }
 
-  revalidatePath(
-    `/dashboard/jobs/${jobId}`,
-  );
+  revalidatePath(`/dashboard/jobs/${jobId}`);
 }

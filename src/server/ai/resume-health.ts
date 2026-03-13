@@ -1,5 +1,8 @@
-import { parseResumeContent } from "./utils/resume-parser";
-
+import { parseResumeContent } from "../utils/resume-parser";
+import {
+  MIN_SUMMARY_LENGTH,
+  MIN_SKILLS_COUNT,
+} from "@/server/config/constants";
 export type ResumeHealth = {
   missingSummary: boolean;
 
@@ -20,68 +23,34 @@ function hasNumbers(text: string) {
   return /\d/.test(text);
 }
 
-export function analyzeResumeHealth(
-  resumeContent: unknown
-): ResumeHealth {
-
-  const resume =
-    parseResumeContent(
-      resumeContent
-    );
+export function analyzeResumeHealth(resumeContent: unknown): ResumeHealth {
+  const resume = parseResumeContent(resumeContent);
 
   const warnings: string[] = [];
 
-  const missingSummary =
-    !resume.summary;
+  const missingSummary = !resume.summary;
 
-  const missingSkills =
-    resume.skills.length === 0;
+  const missingSkills = resume.skills.length === 0;
 
-  const missingExperience =
-    resume.experience.length === 0;
+  const missingExperience = resume.experience.length === 0;
 
-  const weakSkills =
-    resume.skills.length < 4;
+  const weakSkills = resume.skills.length < MIN_SKILLS_COUNT;
 
-  const weakSummary =
-    resume.summary.length < 60;
+  const weakSummary = resume.summary.length < MIN_SUMMARY_LENGTH;
 
-  const noMetrics =
-    !hasNumbers(
-      JSON.stringify(
-        resume.experience
-      )
-    );
+  const noMetrics = !hasNumbers(JSON.stringify(resume.experience));
 
-  if (missingSummary)
-    warnings.push(
-      "Summary missing"
-    );
+  if (missingSummary) warnings.push("Summary missing");
 
-  if (missingSkills)
-    warnings.push(
-      "No skills listed"
-    );
+  if (missingSkills) warnings.push("No skills listed");
 
-  if (missingExperience)
-    warnings.push(
-      "No experience added"
-    );
+  if (missingExperience) warnings.push("No experience added");
 
-  if (weakSkills)
-    warnings.push(
-      "Too few skills"
-    );
+  if (weakSkills) warnings.push("Too few skills");
 
-  if (weakSummary)
-    warnings.push(
-      "Summary too short"
-    );
+  if (weakSummary) warnings.push("Summary too short");
 
-  if (noMetrics)
-    warnings.push(
-      "No measurable achievements"
-    );
+  if (noMetrics) warnings.push("No measurable achievements");
 
   return {
     missingSummary,

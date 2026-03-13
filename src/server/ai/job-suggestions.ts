@@ -1,5 +1,5 @@
 import { aiJsonCompletion } from "./client";
-import { parseResumeContent } from "./utils/resume-parser";
+import { parseResumeContent } from "../utils/resume-parser";
 
 export type JobSuggestions = {
   roles: string[];
@@ -12,13 +12,9 @@ export type JobSuggestions = {
 };
 
 export async function generateJobSuggestions(
-  resumeContent: unknown
+  resumeContent: unknown,
 ): Promise<JobSuggestions | null> {
-
-  const resume =
-    parseResumeContent(
-      resumeContent
-    );
+  const resume = parseResumeContent(resumeContent);
 
   const prompt = `
 You are an AI career advisor.
@@ -40,13 +36,9 @@ Resume:
 ${JSON.stringify(resume, null, 2)}
 `;
 
-  const result =
-    await aiJsonCompletion<JobSuggestions>(
-      prompt,
-      {
-        temperature: 0.3,
-      }
-    );
+  const result = await aiJsonCompletion<JobSuggestions>(prompt, {
+    temperature: 0.3,
+  });
 
   return result;
 }

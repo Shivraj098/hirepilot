@@ -1,19 +1,7 @@
 import { aiJsonCompletion } from "./client";
 import { calculateATS } from "./ats-engine";
 import { checkAIGuard } from "./ai-guard";
-export type ResumeScoreResult = {
-  profileScore: number;
-
-  contentScore: number;
-
-  skillScore: number;
-
-  experienceScore: number;
-
-  atsScore: number;
-
-  tips: string[];
-};
+import { ResumeScoreResult } from "@/server/types/score.types";
 
 export async function calculateResumeScore(
   resumeContent: unknown,

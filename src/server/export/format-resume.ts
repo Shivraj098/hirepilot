@@ -1,13 +1,7 @@
-import { parseResumeContent } from "../ai/utils/resume-parser";
+import { parseResumeContent } from "../utils/resume-parser";
 
-export function formatResumeText(
-  content: unknown
-): string {
-
-  const r =
-    parseResumeContent(
-      content
-    );
+export function formatResumeText(content: unknown): string {
+  const r = parseResumeContent(content);
 
   let text = "";
 
