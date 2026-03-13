@@ -11,6 +11,8 @@ type GeneratedGap = {
   priority: "HIGH" | "MEDIUM" | "LOW";
   estimatedTime: string;
   reasoning: string;
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  learningLink?: string;
 };
 
 type AIGap = {
@@ -18,6 +20,9 @@ type AIGap = {
   priority: "HIGH" | "MEDIUM" | "LOW";
   estimatedTime: string;
   reasoning: string;
+
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  learningLink?: string;
 };
 
 
@@ -40,7 +45,7 @@ async function generateSkillGapsAI(
   const prompt = `
 You are an AI career coach.
 
-Generate a learning roadmap for missing skills.
+Generate a learning roadmap.
 
 Return JSON array.
 
@@ -51,7 +56,9 @@ Format:
   "skill": string,
   "priority": "HIGH | MEDIUM | LOW",
   "estimatedTime": string,
-  "reasoning": string
+  "difficulty": "EASY | MEDIUM | HARD",
+  "reasoning": string,
+  "learningLink": string
  }
 ]
 
@@ -61,7 +68,6 @@ ${skillGap.missingSkills.join(", ")}
 Job description:
 ${jobDescription}
 `;
-
   const result =
     await aiJsonCompletion<AIGap[]>(
       prompt,
@@ -72,12 +78,14 @@ ${jobDescription}
     return null;
   }
 
-  return result.map((r) => ({
-    skill: r.skill,
-    priority: r.priority,
-    estimatedTime: r.estimatedTime,
-    reasoning: r.reasoning,
-  }));
+ return result.map((r) => ({
+  skill: r.skill,
+  priority: r.priority,
+  estimatedTime: r.estimatedTime,
+  reasoning: r.reasoning,
+  difficulty: r.difficulty ?? "MEDIUM",
+  learningLink: r.learningLink ?? "",
+}));
 }
 
 /*
@@ -95,6 +103,8 @@ function fallbackSkillGaps(
       priority: "MEDIUM",
       estimatedTime: "1-2 weeks",
       reasoning: `${skill} missing from resume`,
+      difficulty: "MEDIUM",
+      learningLink: "",
     })
   );
 }

@@ -165,17 +165,21 @@ model AISuggestion {
 }
 
 model SkillGap {
-  id          String     @id @default(uuid())
-  jobId       String
-  skill       String
-  priority    String
+  id            String   @id @default(uuid())
+  jobId         String
+
+  skill         String
+  priority      String
   estimatedTime String
-  reasoning   String
-  createdAt   DateTime   @default(now())
+  reasoning     String
 
-  job         Job        @relation(fields: [jobId], references: [id])
+  difficulty    String?   // NEW
+  learningLink  String?   // NEW
+
+  createdAt     DateTime @default(now())
+
+  job           Job @relation(fields: [jobId], references: [id])
 }
-
 model InterviewPrep {
   id            String     @id @default(uuid())
   jobId         String
