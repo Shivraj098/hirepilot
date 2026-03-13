@@ -1,5 +1,5 @@
 import { aiJsonCompletion } from "./client";
-
+ 
 export type InterviewPrepResult = {
   questions: string[];
 
@@ -48,9 +48,20 @@ Job:
 ${jobDescription}
 `;
 
-  const result = await aiJsonCompletion<InterviewPrepResult>(prompt, {
+  const result = await aiJsonCompletion<InterviewPrepResult >(prompt, {
     temperature: 0.2,
   });
+ if (!result) {
+    return {
+      questions: [],
+      technicalTopics: [],
+      starDrafts: [],
+      difficulty: "",
+      category: "",
+      
+    };
+  }
+  
 
   return result;
 }

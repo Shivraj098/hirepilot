@@ -1,6 +1,6 @@
 import { aiJsonCompletion } from "./client";
 import { calculateATS } from "./ats-engine";
-
+import { checkAIGuard } from "./ai-guard";
 export type ResumeScoreResult = {
   profileScore: number;
 
@@ -17,15 +17,15 @@ export type ResumeScoreResult = {
 
 export async function calculateResumeScore(
   resumeContent: unknown,
-  jobDescription?: string
+  jobDescription?: string,
+  userId?: string,
 ): Promise<ResumeScoreResult | null> {
-
   const ats = jobDescription
-    ? calculateATS(
-        resumeContent,
-        jobDescription
-      )
+    ? calculateATS(resumeContent, jobDescription)
     : null;
+  if (userId) {
+    checkAIGuard(userId);
+  }
 
   const prompt = `
 You are an AI resume reviewer.
@@ -36,7 +36,6 @@ Return JSON.
 
 Format:
 
-{
   "profileScore": number,
   "contentScore": number,
   "skillScore": number,
@@ -56,11 +55,9 @@ ATS Score:
 ${ats ? ats.score : 0}
 `;
 
-  const result =
-    await aiJsonCompletion<ResumeScoreResult>(
-      prompt,
-      { temperature: 0.2 }
-    );
+  const result = await aiJsonCompletion<ResumeScoreResult>(prompt, {
+    temperature: 0.2,
+  });
 
   return result;
 }

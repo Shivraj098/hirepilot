@@ -5,7 +5,7 @@ import { Prisma } from "@prisma/client";
 import { parsePdf } from "@/server/resume-parser/parse-pdf";
 import { parseDocx } from "@/server/resume-parser/parse-docx";
 import { extractResumeJson } from "@/server/ai/resume-extract";
-
+import { assertResumeOwner } from "../auth/permissions";
 export async function uploadResume(
   file: File,
   userId: string,
@@ -50,6 +50,11 @@ export async function uploadResume(
         "AI parse failed"
       );
     }
+
+    await assertResumeOwner(
+      resumeId,
+      userId
+    );
 
     const version =
       await prisma.resumeVersion.create(
