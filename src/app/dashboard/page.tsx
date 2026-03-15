@@ -43,33 +43,55 @@ export default async function DashboardHome() {
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="  space-y-10
+      max-w-6xl
+      mx-auto">
       {/* HEADER */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage resumes, jobs, and optimization workflow
-        </p>
-      </div>
+
+  <h1 className="text-3xl font-semibold tracking-tight">
+    Dashboard
+  </h1>
+
+  <p className="text-sm text-muted-foreground">
+    Manage resumes, jobs, and AI optimization workflow
+  </p>
+
+</div>
 
       {/* ======================= */}
       {/* STATS */}
       {/* ======================= */}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="p-5 space-y-1">
+      <div className="grid gap-4 sm:grid-cols-3 pt-2">
+        <Card className=" p-5
+    space-y-1
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background">
           <p className="text-sm text-muted-foreground">Resumes</p>
-          <p className="text-2xl font-semibold">{resumes.length}</p>
+          <p className="text-3xl font-semibold">{resumes.length}</p>
         </Card>
 
-        <Card className="p-5 space-y-1">
+        <Card className=" p-5
+    space-y-1
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background">
           <p className="text-sm text-muted-foreground">Jobs</p>
-          <p className="text-2xl font-semibold">{jobs.length}</p>
+          <p className="text-3xl font-semibold">{jobs.length}</p>
         </Card>
 
-        <Card className="p-5 space-y-1">
+        <Card className=" p-5
+    space-y-1
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background">
           <p className="text-sm text-muted-foreground">Versions</p>
-          <p className="text-2xl font-semibold">{versionCount}</p>
+          <p className="text-3xl font-semibold">{versionCount}</p>
         </Card>
       </div>
 
@@ -77,15 +99,20 @@ export default async function DashboardHome() {
       {/* QUICK ACTIONS */}
       {/* ======================= */}
 
-      <Card className="p-6 space-y-4">
-        <div className="space-y-1">
+      <Card className=" p-6
+    space-y-6
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background">
+        <div className="space-y-1 max-w-md">
           <h2 className="text-lg font-semibold">Quick Actions</h2>
           <p className="text-sm text-muted-foreground">
             Create new resume or add a job.
           </p>
         </div>
 
-        <div className="flex gap-3 flex-wrap">
+        <div className="flex flex-wrap gap-4 pt-2">
           <form
             action={async (formData) => {
               "use server";
@@ -93,10 +120,11 @@ export default async function DashboardHome() {
               if (!title) return;
               await createResume(title);
             }}
-            className="flex gap-2"
+            className="flex gap-2 items-center"
           >
-            <Input name="title" placeholder="Resume title" />
-            <Button type="submit">New Resume</Button>
+            <Input name="title" placeholder="Resume title" className="w-40"
+             />
+            <Button type="submit" className="min-w-[110px]">New Resume</Button>
           </form>
 
           <form
@@ -113,11 +141,11 @@ export default async function DashboardHome() {
             }}
             className="flex gap-2"
           >
-            <Input name="title" placeholder="Job title" />
+            <Input name="title" placeholder="Job title" className="w-36" />
 
-            <Input name="company" placeholder="Company" />
+            <Input name="company" placeholder="Company" className="w-36" />
 
-            <Button type="submit">Add Job</Button>
+            <Button type="submit" className="min-w-[110px]">Add Job</Button>
           </form>
         </div>
       </Card>
@@ -132,7 +160,12 @@ export default async function DashboardHome() {
         {/* Resume list */}
 
         {resumes.length === 0 ? (
-          <Card className="p-6 space-y-1">
+          <Card className=" p-5
+    space-y-1
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background">
 
   <p className="text-sm font-medium">
     No resumes yet
@@ -187,7 +220,12 @@ export default async function DashboardHome() {
         {/* Job list */}
 
         {jobs.length === 0 ? (
-          <Card className="p-6 space-y-1">
+          <Card className=" p-5
+    space-y-1
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background">
 
   <p className="text-sm font-medium">
     No jobs yet

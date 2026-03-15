@@ -6,30 +6,33 @@ import { parsePdf } from "@/server/resume-parser/parse-pdf";
 import { parseDocx } from "@/server/resume-parser/parse-docx";
 import { extractResumeJson } from "@/server/ai/resume-extract";
 import { assertResumeOwner } from "../auth/permissions";
+import { getCurrentUser } from "@/lib/auth";
+
 export async function uploadResume(
   file: File,
-  userId: string,
   resumeId: string
 ) {
   try {
-    const buffer =
-      Buffer.from(
-        await file.arrayBuffer()
-      );
+    const user = await getCurrentUser();
+
+    if (!user?.id) {
+      throw new Error("Unauthorized");
+    }
+
+    const buffer = Buffer.from(
+      await file.arrayBuffer()
+    );
 
     let text = "";
 
     if (
-      file.type ===
-      "application/pdf"
+      file.type === "application/pdf"
     ) {
       text = await parsePdf(
         buffer
       );
     } else if (
-      file.type.includes(
-        "word"
-      )
+      file.type.includes("word")
     ) {
       text = await parseDocx(
         buffer
@@ -53,7 +56,7 @@ export async function uploadResume(
 
     await assertResumeOwner(
       resumeId,
-      userId
+      user.id
     );
 
     const version =
@@ -61,10 +64,13 @@ export async function uploadResume(
         {
           data: {
             resumeId,
-            userId,
-            
-            content: json as unknown as Prisma.InputJsonValue,
+            userId: user.id,
+
+            content:
+              json as unknown as Prisma.InputJsonValue,
+
             versionType: "BASE",
+
             createdBy: "AI",
           },
         }

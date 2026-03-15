@@ -90,14 +90,34 @@ export default async function ResumePage({ params }: Props) {
   const education = content.education ?? [];
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10 space-y-12">
-      <h1 className="text-3xl font-bold tracking-tight">{resume.title}</h1>
+    <div
+      className="max-w-5xl
+      mx-auto
+      px-6
+      py-10
+      space-y-10"
+    >
+      <div className="space-y-1">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {resume.title}
+        </h1>
+
+        <p className="text-sm text-muted-foreground">Base resume editor</p>
+      </div>
 
       {/* ================= SUMMARY ================= */}
 
-      <Card className="p-8 space-y-6">
+      <Card
+        className=" p-8
+    space-y-6
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background"
+      >
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">Summary</h2>
+
           <p className="text-sm text-muted-foreground">
             Short professional overview used at the top of your resume.
           </p>
@@ -117,7 +137,7 @@ export default async function ResumePage({ params }: Props) {
             rows={6}
           />
 
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-2">
             <Button variant="primary">Save</Button>
           </div>
         </FormWithToast>
@@ -125,7 +145,14 @@ export default async function ResumePage({ params }: Props) {
       {/* ================= SKILLS ================= */}
       {/* ================= SKILLS ================= */}
 
-      <Card className="p-8 space-y-6">
+      <Card
+        className="p-8
+    space-y-6
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background"
+      >
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">Skills</h2>
           <p className="text-sm text-muted-foreground">
@@ -134,21 +161,25 @@ export default async function ResumePage({ params }: Props) {
         </div>
 
         {skills.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No skills added yet.</p>
+          <p className="text-sm text-muted-foreground py-4">
+            No skills added yet.
+          </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-1">
             {skills.map((skill, index) => (
               <div
                 key={index}
                 className="
-            flex items-center gap-2
-            rounded-full
-            border border-border
-            bg-muted
-            px-3 py-1.5
-            text-sm
-            transition-colors
-            hover:bg-muted/80
+           flex items-center gap-2
+rounded-full
+border border-border/70
+bg-muted/50
+px-3 py-1.5
+text-sm
+font-medium
+transition-all
+hover:bg-muted
+hover:border-border
           "
               >
                 <span className="font-medium">{skill}</span>
@@ -162,7 +193,13 @@ export default async function ResumePage({ params }: Props) {
                 >
                   <Button
                     variant="ghost"
-                    className="h-6 px-2 text-xs text-destructive"
+                    className="
+    h-6
+    px-2
+    text-xs
+    text-muted-foreground
+    hover:text-destructive
+  "
                   >
                     ×
                   </Button>
@@ -181,7 +218,7 @@ export default async function ResumePage({ params }: Props) {
             await addSkill(resumeId, skill);
           }}
         >
-          <div className="pt-4 border-t border-border flex gap-3">
+          <div className="pt-4 border-t border-border flex gap-3 items-center">
             <Input
               name="skill"
               placeholder="Add skill (e.g., React)"
@@ -195,7 +232,14 @@ export default async function ResumePage({ params }: Props) {
       {/* ================= EDUCATION ================= */}
       {/* ================= EDUCATION ================= */}
 
-      <Card className="p-8 space-y-6">
+      <Card
+        className=" p-8
+    space-y-6
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background"
+      >
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">Education</h2>
           <p className="text-sm text-muted-foreground">
@@ -204,7 +248,7 @@ export default async function ResumePage({ params }: Props) {
         </div>
 
         {education.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground py-4">
             No education added yet.
           </p>
         ) : (
@@ -214,18 +258,19 @@ export default async function ResumePage({ params }: Props) {
                 key={index}
                 className="
             rounded-xl
-            border border-border
-            bg-muted
-            p-5
-            transition-colors
-            hover:bg-muted/80
+border border-border/60
+bg-muted/40
+p-5
+transition-all
+hover:bg-muted/60
+hover:border-border
           "
               >
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-1">
-                    <h3 className="font-medium">{edu.degree}</h3>
+                    <h3 className="font-semibold text-base">{edu.degree}</h3>
 
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground pt-1">
                       {edu.institution} — {edu.duration}
                     </p>
                   </div>
@@ -239,7 +284,11 @@ export default async function ResumePage({ params }: Props) {
                   >
                     <Button
                       variant="ghost"
-                      className="text-destructive text-sm"
+                      className="
+    text-muted-foreground
+    hover:text-destructive
+    text-sm
+  "
                     >
                       Remove
                     </Button>
@@ -269,7 +318,7 @@ export default async function ResumePage({ params }: Props) {
 
             <Input name="duration" placeholder="Duration" />
 
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-2">
               <Button variant="primary">Add Education</Button>
             </div>
           </div>
@@ -278,7 +327,14 @@ export default async function ResumePage({ params }: Props) {
       {/* ================= EXPERIENCE ================= */}
       {/* ================= EXPERIENCE ================= */}
 
-      <Card className="p-8 space-y-6">
+      <Card
+        className=" p-8
+    space-y-6
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background"
+      >
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">Experience</h2>
           <p className="text-sm text-muted-foreground">
@@ -287,7 +343,7 @@ export default async function ResumePage({ params }: Props) {
         </div>
 
         {experience.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground py-4">
             No experience added yet.
           </p>
         ) : (
@@ -295,19 +351,18 @@ export default async function ResumePage({ params }: Props) {
             {experience.map((exp, index) => (
               <div
                 key={index}
-                className="
-            rounded-xl
-            border border-border
-            bg-muted
-            p-5
-            space-y-2
-            transition-colors
-            hover:bg-muted/80
-          "
+                className="rounded-xl
+border border-border/60
+bg-muted/40
+p-5
+space-y-2
+transition-all
+hover:bg-muted/60
+hover:border-border"
               >
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-1">
-                    <h3 className="font-medium">{exp.role}</h3>
+                    <h3 className="font-semibold text-base">{exp.role}</h3>
 
                     <p className="text-sm text-muted-foreground">
                       {exp.company} — {exp.duration}
@@ -323,14 +378,18 @@ export default async function ResumePage({ params }: Props) {
                   >
                     <Button
                       variant="ghost"
-                      className="text-destructive text-sm"
+                      className="
+    text-muted-foreground
+    hover:text-destructive
+    text-sm
+  "
                     >
                       Remove
                     </Button>
                   </FormWithToast>
                 </div>
 
-                <p className="text-sm text-foreground/90 leading-relaxed">
+                <p className="text-sm text-foreground/90 leading-relaxed pt-1">
                   {exp.description}
                 </p>
               </div>
@@ -360,7 +419,7 @@ export default async function ResumePage({ params }: Props) {
 
             <Textarea name="description" placeholder="Description" rows={4} />
 
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-2">
               <Button variant="primary">Add Experience</Button>
             </div>
           </div>
@@ -369,7 +428,14 @@ export default async function ResumePage({ params }: Props) {
       {/* ================= VERSION HISTORY ================= */}
       {/* ================= VERSION HISTORY ================= */}
 
-      <Card className="p-8 space-y-6">
+      <Card
+        className=" p-8
+    space-y-6
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background"
+      >
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">
             Version History
@@ -380,7 +446,7 @@ export default async function ResumePage({ params }: Props) {
         </div>
 
         {tailoredVersions.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-4">
+          <div className="text-sm text-muted-foreground py-6">
             No tailored versions yet.
           </div>
         ) : (
@@ -389,27 +455,28 @@ export default async function ResumePage({ params }: Props) {
               <div
                 key={version.id}
                 className="
-            rounded-xl
-            border border-border
-            bg-muted
-            p-5
-            flex justify-between items-start gap-4
-            transition-colors
-            hover:bg-muted/80
+        rounded-xl
+border border-border/60
+bg-muted/40
+p-5
+flex justify-between items-start gap-4
+transition-all
+hover:bg-muted/60
+hover:border-border
           "
               >
                 <div className="space-y-1">
-                  <p className="font-medium">
+                  <p className="font-semibold">
                     Tailored for {version.job?.title}
                   </p>
 
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground pt-1">
                     {version.job?.company}
                     {version.job?.location && ` — ${version.job.location}`}
                   </p>
                 </div>
 
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {new Date(version.createdAt).toLocaleString()}
                 </span>
               </div>
@@ -421,8 +488,15 @@ export default async function ResumePage({ params }: Props) {
       {/* ================= CREATE TAILORED ================= */}
       {/* ================= CREATE TAILORED ================= */}
 
-      <Card className="p-8 space-y-6">
-        <div className="space-y-1">
+      <Card
+        className=" p-8
+    space-y-6
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background"
+      >
+        <div className="space-y-1 ,max-w-md">
           <h2 className="text-lg font-semibold tracking-tight">
             Create Tailored Version
           </h2>
@@ -442,8 +516,8 @@ export default async function ResumePage({ params }: Props) {
             await createTailoredVersionForJob(resumeId, jobId);
           }}
         >
-          <div className="space-y-4">
-            <Select name="jobId" required>
+          <div className="space-y-4 pt-2">
+            <Select name="jobId" required className="max-w-md">
               <option value="">Select a job to tailor resume</option>
 
               {jobs.map((job) => (
@@ -453,8 +527,10 @@ export default async function ResumePage({ params }: Props) {
               ))}
             </Select>
 
-            <div className="flex justify-end">
-              <Button variant="primary">Create Tailored Version</Button>
+            <div className="flex justify-end pt-2">
+              <Button variant="primary" className="min-w-[180px]">
+                Create Tailored Version
+              </Button>
             </div>
           </div>
         </FormWithToast>
@@ -462,16 +538,25 @@ export default async function ResumePage({ params }: Props) {
       {/* ================= JOBS ================= */}
       {/* ================= JOBS ================= */}
 
-      <Card className="p-8 space-y-6">
+      <Card
+        className="p-8
+    space-y-6
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background"
+      >
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">Jobs</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground ">
             Track roles you’re applying to and tailor resumes accordingly.
           </p>
         </div>
 
         {jobs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No jobs added yet.</p>
+          <p className="text-sm text-muted-foreground py-6">
+            No jobs added yet.
+          </p>
         ) : (
           <div className="space-y-3">
             {jobs.map((job) => (
@@ -479,16 +564,17 @@ export default async function ResumePage({ params }: Props) {
                 key={job.id}
                 className="
             rounded-xl
-            border border-border
-            bg-muted
-            p-5
-            flex justify-between items-start gap-4
-            transition-colors
-            hover:bg-muted/80
+border border-border/60
+bg-muted/40
+p-5
+flex justify-between items-start gap-4
+transition-all
+hover:bg-muted/60
+hover:border-border
           "
               >
                 <div className="space-y-1">
-                  <h3 className="font-medium">{job.title}</h3>
+                  <h3 className="font-semi-bold text-base">{job.title}</h3>
 
                   <p className="text-sm text-muted-foreground">{job.company}</p>
                 </div>
@@ -500,7 +586,12 @@ export default async function ResumePage({ params }: Props) {
                     await deleteJob(job.id);
                   }}
                 >
-                  <Button variant="ghost" className="text-destructive text-sm">
+                  <Button
+                    variant="ghost"
+                    className="text-muted-foreground
+    hover:text-destructive
+    text-sm"
+                  >
                     Delete
                   </Button>
                 </FormWithToast>
@@ -535,7 +626,7 @@ export default async function ResumePage({ params }: Props) {
               rows={4}
             />
 
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-2">
               <Button variant="primary">Add Job</Button>
             </div>
           </div>
