@@ -7,6 +7,15 @@ import { analyzeJob } from "@/server/ai/job-intelligence";
 import { analyzeJobMatch } from "@/server/ai/job-match";
 import { calculateResumeScore } from "../ai/resume-score";
 import { recalculateATS } from "../ai/recalculate-ats";
+import {
+  saveJobAnalysis,
+  saveMatchResult,
+} from "@/server/features/analysis/analysis.service";
+import {
+  saveResumeAnalysis,
+  saveScoreHistory,
+} from "@/server/features/analysis/analysis.service";
+import { logActivity } from "@/server/features/activity/activity.service";
 type ExperienceItem = {
   company: string;
   role: string;
@@ -48,6 +57,12 @@ export async function createResume(title: string) {
         },
       },
     },
+  });
+
+  await logActivity({
+    userId: user.id,
+    type: "RESUME_CREATED",
+    message: "Created resume",
   });
 
   revalidatePath("/dashboard");
@@ -362,16 +377,13 @@ export async function createTailoredVersionForJob(
     throw new Error("Base version not found");
   }
 
-  const tailoredVersion =
-  await prisma.resumeVersion.create({
+  const tailoredVersion = await prisma.resumeVersion.create({
     data: {
       resumeId,
       userId: user.id,
       jobId: job.id,
 
-      content:
-        (baseVersion.content ??
-          {}) as Prisma.InputJsonValue,
+      content: (baseVersion.content ?? {}) as Prisma.InputJsonValue,
 
       versionType: "TAILORED",
 
@@ -384,9 +396,16 @@ export async function createTailoredVersionForJob(
       scoreSnapshot: null,
     },
   });
-  await recalculateATS(
-  tailoredVersion.id
-);
+
+  await recalculateATS(tailoredVersion.id);
+
+  await logActivity({
+    userId: user.id,
+
+    type: "RESUME_TAILORED",
+    message: `Tailored resume for ${job.title}`,
+  });
+  await recalculateATS(tailoredVersion.id);
 
   revalidatePath(`/dashboard/${resumeId}`);
   revalidatePath("/dashboard");
@@ -396,41 +415,37 @@ export async function createTailoredVersionForJob(
 
 import { analyzeResumeProfile } from "../ai/resume-intelligence";
 
-export async function analyzeResume(
-  resumeId: string
-) {
+export async function analyzeResume(resumeId: string) {
   const user = await getCurrentUser();
 
   if (!user?.id) {
     throw new Error("Unauthorized");
   }
 
-  const baseVersion =
-    await prisma.resumeVersion.findFirst({
-      where: {
-        resumeId,
-        userId: user.id,
-        versionType: "BASE",
-      },
-    });
+  const baseVersion = await prisma.resumeVersion.findFirst({
+    where: {
+      resumeId,
+      userId: user.id,
+      versionType: "BASE",
+    },
+  });
 
   if (!baseVersion) {
-    throw new Error(
-      "Base version not found"
-    );
+    throw new Error("Base version not found");
   }
 
-  const result =
-    await analyzeResumeProfile(
-      baseVersion.content
-    );
+  const result = await analyzeResumeProfile(baseVersion.content);
+
+  await logActivity({
+    userId: user.id,
+    type: "RESUME_ANALYZED",
+    message: "Analyzed resume",
+  });
 
   return result;
 }
 
-export async function analyzeJobForUser(
-  jobId: string
-) {
+export async function analyzeJobForUser(jobId: string) {
   const user = await getCurrentUser();
 
   if (!user?.id) {
@@ -448,31 +463,43 @@ export async function analyzeJobForUser(
     throw new Error("Job not found");
   }
 
-  const result = await analyzeJob(
-    job.description
-  );
+  const result = await analyzeJob(job.description);
+  if (result) {
+    await saveJobAnalysis({
+      jobId: job.id,
+      userId: user.id,
+      roleCategory: result.roleCategory,
+      requiredLevel: result.requiredLevel,
+      difficulty: result.difficulty,
+      domain: result.domain,
+      importantSkills: result.importantSkills,
+      secondarySkills: result.secondarySkills,
+    });
+
+    await logActivity({
+      userId: user.id,
+      type: "JOB_ANALYZED",
+      message: "Job analyzed",
+    });
+  }
 
   return result;
 }
 
-export async function getJobMatch(
-  resumeId: string,
-  jobId: string
-) {
+export async function getJobMatch(resumeId: string, jobId: string) {
   const user = await getCurrentUser();
 
   if (!user?.id) {
     throw new Error("Unauthorized");
   }
 
-  const baseVersion =
-    await prisma.resumeVersion.findFirst({
-      where: {
-        resumeId,
-        userId: user.id,
-        versionType: "BASE",
-      },
-    });
+  const baseVersion = await prisma.resumeVersion.findFirst({
+    where: {
+      resumeId,
+      userId: user.id,
+      versionType: "BASE",
+    },
+  });
 
   if (!baseVersion) {
     throw new Error("Base not found");
@@ -489,32 +516,43 @@ export async function getJobMatch(
     throw new Error("Job not found");
   }
 
-  const result = await analyzeJobMatch(
-    baseVersion.content,
-    job.description
-  );
+  const result = await analyzeJobMatch(baseVersion.content, job.description);
+
+  if (result) {
+    await saveMatchResult({
+      resumeVersionId: baseVersion.id,
+      jobId,
+      userId: user.id,
+      matchScore: result.matchScore,
+      fitLevel: result.fitLevel,
+      shouldApply: result.shouldApply,
+      missingSkills: result.missingSkills ?? [],
+      reason: result.reason,
+    });
+    await logActivity({
+      userId: user.id,
+      type: "JOB_MATCHED",
+      message: "Job match calculated",
+    });
+  }
 
   return result;
 }
 
-export async function getResumeScore(
-  resumeId: string,
-  jobId?: string
-) {
+export async function getResumeScore(resumeId: string, jobId?: string) {
   const user = await getCurrentUser();
 
   if (!user?.id) {
     throw new Error("Unauthorized");
   }
 
-  const baseVersion =
-    await prisma.resumeVersion.findFirst({
-      where: {
-        resumeId,
-        userId: user.id,
-        versionType: "BASE",
-      },
-    });
+  const baseVersion = await prisma.resumeVersion.findFirst({
+    where: {
+      resumeId,
+      userId: user.id,
+      versionType: "BASE",
+    },
+  });
 
   if (!baseVersion) {
     throw new Error("Base not found");
@@ -523,23 +561,46 @@ export async function getResumeScore(
   let jobDescription: string | undefined;
 
   if (jobId) {
-    const job =
-      await prisma.job.findFirst({
-        where: {
-          id: jobId,
-          userId: user.id,
-        },
-      });
+    const job = await prisma.job.findFirst({
+      where: {
+        id: jobId,
+        userId: user.id,
+      },
+    });
 
-    jobDescription =
-      job?.description;
+    jobDescription = job?.description;
   }
 
-  const result =
-    await calculateResumeScore(
-      baseVersion.content,
-      jobDescription
-    );
+  const result = await calculateResumeScore(
+    baseVersion.content,
+    jobDescription,
+  );
+
+  if (result) {
+    await saveResumeAnalysis({
+      resumeVersionId: baseVersion.id,
+      userId: user.id,
+      score: result.profileScore,
+      atsScore: result.atsScore,
+      profileScore: result.profileScore,
+      contentScore: result.contentScore,
+      skillScore: result.skillScore,
+      experienceScore: result.experienceScore,
+    });
+
+    await saveScoreHistory({
+      resumeVersionId: baseVersion.id,
+      userId: user.id,
+      score: result.profileScore,
+      atsScore: result.atsScore,
+    });
+
+    await logActivity({
+      userId: user.id,
+      type: "RESUME_SCORED",
+      message: "Resume scored",
+    });
+  }
 
   return result;
 }
