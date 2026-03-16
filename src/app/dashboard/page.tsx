@@ -154,14 +154,14 @@ export default async function DashboardHome() {
       {/* RESUMES */}
       {/* ======================= */}
 
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Recent Resumes</h2>
+      <div className="space-y-4 pt-2">
+        <h2 className="text-lg font-semibold tracking-tight">Recent Resumes</h2>
 
         {/* Resume list */}
 
         {resumes.length === 0 ? (
-          <Card className=" p-5
-    space-y-1
+          <Card className="  p-6
+    space-y-2
     rounded-2xl
     border-border/60
     shadow-sm
@@ -177,15 +177,23 @@ export default async function DashboardHome() {
 
 </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className=" p-5
+    space-y-3
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background
+    transition-all
+    hover:shadow-md
+    hover:-translate-y-[2px]">
             {resumes.map((resume) => (
               <Link key={resume.id} href={`/dashboard/${resume.id}`}>
                 <Card className="p-5 space-y-3 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start gap-3">
                     <div className="space-y-1">
-                      <h3 className="font-medium">{resume.title}</h3>
+                      <h3 className="font-semibold text-base">{resume.title}</h3>
 
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground pt-1">
                         Created{" "}
                         {new Date(resume.createdAt).toLocaleDateString()}
                       </p>
@@ -194,10 +202,11 @@ export default async function DashboardHome() {
                     <span
                       className="
         text-xs
-        rounded-full
-        border border-border
-        bg-muted
-        px-2 py-1
+rounded-full
+border border-border/60
+bg-muted/50
+px-2.5 py-1
+font-medium
       "
                     >
                       {resume.versions.length} versions
@@ -214,14 +223,14 @@ export default async function DashboardHome() {
       {/* JOBS */}
       {/* ======================= */}
 
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Recent Jobs</h2>
+      <div className="space-y-4 pt-2">
+        <h2 className="text-lg font-semibold tracking-tight">Recent Jobs</h2>
 
         {/* Job list */}
 
         {jobs.length === 0 ? (
-          <Card className=" p-5
-    space-y-1
+          <Card className="  p-6
+    space-y-2
     rounded-2xl
     border-border/60
     shadow-sm
@@ -237,14 +246,22 @@ export default async function DashboardHome() {
 
 </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {jobs.map((job) => (
               <Link key={job.id} href={`/dashboard/jobs/${job.id}`}>
-                <Card className="p-5 space-y-3 hover:shadow-md transition-shadow">
+                <Card className=" p-5
+    space-y-3
+    rounded-2xl
+    border-border/60
+    shadow-sm
+    bg-background
+    transition-all
+    hover:shadow-md
+    hover:-translate-y-[2px]">
                   <div className="space-y-1">
-                    <h3 className="font-medium">{job.title}</h3>
+                    <h3 className="font-semibold text-base">{job.title}</h3>
 
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground pt-1">
                       {job.company}
                     </p>
 

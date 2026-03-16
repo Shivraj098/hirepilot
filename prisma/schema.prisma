@@ -6,14 +6,11 @@
 
 generator client {
   provider = "prisma-client-js"
-  
 }
 
 datasource db {
   provider = "postgresql"
-  
 }
-
 
 enum JobStatus {
   SAVED
@@ -22,192 +19,220 @@ enum JobStatus {
   OFFER
   REJECTED
 }
+
 enum VersionType {
   BASE
   TAILORED
 }
 
 model User {
-  id             String            @id @default(uuid())
-  name           String?
-  email          String            @unique
-  password       String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id        String   @id @default(uuid())
+  name      String?
+  email     String   @unique
+  password  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   resumes        Resume[]
   resumeVersions ResumeVersion[]
   jobs           Job[]
   applications   JobApplication[]
-  sessions Session[]
-  accounts Account[]
+  sessions       Session[]
+  accounts       Account[]
 
+  resumeAnalyses    ResumeAnalysis[]
+  activities        Activity[]
+  matchResults      MatchResult[]
+  tailorResults     TailorResult[]
+  scoreHistories    ScoreHistory[]
+  jobAnalyses       JobAnalysis[]
+  linkedinProfiles  LinkedinProfile[]
+  portfolioProfiles PortfolioProfile[]
 }
 
 model Resume {
-  id        String   @id @default(uuid())
-  userId    String
-  title     String
+  id     String @id @default(uuid())
+  userId String
+  title  String
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  versions  ResumeVersion[]
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions ResumeVersion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-
 model ResumeVersion {
-  id           String   @id @default(uuid())
-  resumeId     String
-  userId       String
-  jobId        String?
-  content      Json
+  id       String  @id @default(uuid())
+  resumeId String
+  userId   String
+  jobId    String?
+  content  Json
 
-  versionType  VersionType @default(BASE)
-  parentId     String?
+  versionType VersionType @default(BASE)
+  parentId    String?
 
-  
-  label        String?
-  createdBy    String?   // "AI" | "USER" | "SYSTEM"
-  notes        String?
+  label         String?
+  createdBy     String?
+  notes         String?
   scoreSnapshot Int?
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  resume       Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job          Job?     @relation(fields: [jobId], references: [id])
-  parent       ResumeVersion? @relation("VersionBranch", fields: [parentId], references: [id])
-  children     ResumeVersion[] @relation("VersionBranch")
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job    Job?   @relation(fields: [jobId], references: [id])
+
+  parent   ResumeVersion?  @relation("VersionBranch", fields: [parentId], references: [id])
+  children ResumeVersion[] @relation("VersionBranch")
+
   applications JobApplication[]
   aTSResults   ATSResult[]
   suggestions  AISuggestion[]
+
+  // ✅ ADD THESE TWO (only once)
+
+  tailorBaseResults TailorResult[]   @relation("TailorBase")
+  tailorNewResults  TailorResult[]   @relation("TailorNew")
+  skillGaps         SkillGap[]
+  interviewPreps    InterviewPrep[]
+  resumeAnalyses    ResumeAnalysis[]
+  matchResults      MatchResult[]
+  scoreHistories    ScoreHistory[]
 }
 
 model Job {
-  id           String            @id @default(uuid())
-  userId       String
-  title        String
-  company      String
-  location     String?
-  jobLink      String?
-  description  String
+  id          String  @id @default(uuid())
+  userId      String
+  title       String
+  company     String
+  location    String?
+  jobLink     String?
+  description String
 
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  status       JobStatus         @default(SAVED)
-  notes        String?
+  status JobStatus @default(SAVED)
+  notes  String?
 
   // NEW 
-  appliedAt    DateTime?
-  interviewAt  DateTime?
-  offerAt      DateTime?
-  rejectedAt   DateTime?
+  appliedAt   DateTime?
+  interviewAt DateTime?
+  offerAt     DateTime?
+  rejectedAt  DateTime?
 
-  priority     String?   // LOW / MEDIUM / HIGH
-  source       String?   // LinkedIn / Referral / Company site
-  isFavorite   Boolean   @default(false)
+  priority   String? // LOW / MEDIUM / HIGH
+  source     String? // LinkedIn / Referral / Company site
+  isFavorite Boolean @default(false)
 
-  user         User              @relation(fields: [userId], references: [id])
-  applications JobApplication[]
-  versions     ResumeVersion[]
-  skillGaps    SkillGap[]
+  user           User             @relation(fields: [userId], references: [id])
+  applications   JobApplication[]
+  versions       ResumeVersion[]
+  skillGaps      SkillGap[]
   interviewPreps InterviewPrep[]
+  matchResults   MatchResult[]
+  tailorResults  TailorResult[]
+  jobAnalyses    JobAnalysis[]
 }
+
 model JobApplication {
-  id           String      @id @default(uuid())
-  userId       String
-  jobId        String
+  id              String @id @default(uuid())
+  userId          String
+  jobId           String
   resumeVersionId String
 
-  status       JobStatus   @default(SAVED)
-  notes        String?
+  status JobStatus @default(SAVED)
+  notes  String?
 
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   //  NEW
-  appliedAt    DateTime?
-  interviewAt  DateTime?
-  offerAt      DateTime?
-  rejectedAt   DateTime?
+  appliedAt   DateTime?
+  interviewAt DateTime?
+  offerAt     DateTime?
+  rejectedAt  DateTime?
 
   scoreSnapshot Int?
 
-  user         User        @relation(fields: [userId], references: [id])
-  job          Job         @relation(fields: [jobId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  job           Job           @relation(fields: [jobId], references: [id])
   resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id])
 }
-model ATSResult {
-  id               String   @id @default(uuid())
-  resumeVersionId  String   @unique
-  score            Int
-  matchedKeywords  Json
-  missingKeywords  Json
-  weakKeywords     Json
-  createdAt        DateTime @default(now())
 
-  resumeVersion    ResumeVersion @relation(fields: [resumeVersionId], references: [id])
+model ATSResult {
+  id              String   @id @default(uuid())
+  resumeVersionId String   @unique
+  score           Int
+  matchedKeywords Json
+  missingKeywords Json
+  weakKeywords    Json
+  createdAt       DateTime @default(now())
+
+  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id])
 }
 
 model AISuggestion {
-  id              String        @id @default(uuid())
-  resumeVersionId String
-  section         String
-  originalContent Json
+  id               String   @id @default(uuid())
+  resumeVersionId  String
+  section          String
+  originalContent  Json
   suggestedContent Json
-  applied         Boolean       @default(false)
-  createdAt       DateTime      @default(now())
+  applied          Boolean  @default(false)
+  createdAt        DateTime @default(now())
 
-  resumeVersion   ResumeVersion @relation(fields: [resumeVersionId], references: [id])
+  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id])
 }
 
 model SkillGap {
-  id            String   @id @default(uuid())
-  jobId         String
+  id    String @id @default(uuid())
+  jobId String
 
   skill         String
   priority      String
   estimatedTime String
   reasoning     String
 
-  difficulty    String?   // NEW
-  learningLink  String?   // NEW
+  difficulty      String? // NEW
+  learningLink    String? // NEW
+  resumeVersionId String?
+  resumeVersion   ResumeVersion? @relation(fields: [resumeVersionId], references: [id])
 
-  createdAt     DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  job           Job @relation(fields: [jobId], references: [id])
+  job Job @relation(fields: [jobId], references: [id])
 }
-model InterviewPrep {
-  id            String     @id @default(uuid())
-  jobId         String
 
-  questions     Json
-  starDrafts    Json
+model InterviewPrep {
+  id    String @id @default(uuid())
+  jobId String
+
+  questions       Json
+  starDrafts      Json
   technicalTopics Json
 
-  type          String
+  type            String
+  resumeVersionId String?
+  resumeVersion   ResumeVersion? @relation(fields: [resumeVersionId], references: [id])
 
-  createdAt     DateTime   @default(now())
+  createdAt DateTime @default(now())
 
   // NEW
 
-  difficulty    String?   // EASY / MEDIUM / HARD
-  category      String?   // HR / TECH / MIXED
+  difficulty String? // EASY / MEDIUM / HARD
+  category   String? // HR / TECH / MIXED
 
-  notes         String?
+  notes String?
 
-  rating        Int?      // future user feedback
+  rating Int? // future user feedback
 
-  summary       String?   // AI summary of prep
+  summary String? // AI summary of prep
 
-  status        String?   // NEW / REVIEWED / PRACTICED
+  status String? // NEW / REVIEWED / PRACTICED
 
-  job           Job        @relation(fields: [jobId], references: [id])
+  job Job @relation(fields: [jobId], references: [id])
 }
-
 
 model Account {
   id                String  @id @default(cuid())
@@ -243,4 +268,149 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model ResumeAnalysis {
+  id String @id @default(uuid())
+
+  resumeVersionId String
+  userId          String
+
+  score    Int?
+  atsScore Int?
+
+  profileScore    Int?
+  contentScore    Int?
+  skillScore      Int?
+  experienceScore Int?
+
+  strengths         Json?
+  weaknesses        Json?
+  recommendedSkills Json?
+
+  createdAt DateTime @default(now())
+
+  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Activity {
+  id String @id @default(uuid())
+
+  userId String
+
+  type       String
+  entityType String?
+  entityId   String?
+
+  message String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MatchResult {
+  id String @id @default(uuid())
+
+  resumeVersionId String
+  jobId           String
+  userId          String
+
+  matchScore  Int?
+  fitLevel    String?
+  shouldApply Boolean?
+
+  missingSkills Json?
+  reason        String?
+
+  createdAt DateTime @default(now())
+
+  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
+  job           Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TailorResult {
+  id String @id @default(uuid())
+
+  baseVersionId String
+  newVersionId  String
+  jobId         String
+  userId        String
+
+  createdAt DateTime @default(now())
+
+  baseVersion ResumeVersion @relation("TailorBase", fields: [baseVersionId], references: [id])
+  newVersion  ResumeVersion @relation("TailorNew", fields: [newVersionId], references: [id])
+
+  job  Job  @relation(fields: [jobId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
+
+model ScoreHistory {
+  id String @id @default(uuid())
+
+  resumeVersionId String
+  userId          String
+
+  score    Int?
+  atsScore Int?
+
+  createdAt DateTime @default(now())
+
+  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model JobAnalysis {
+  id String @id @default(uuid())
+
+  jobId  String
+  userId String
+
+  roleCategory  String?
+  requiredLevel String?
+  difficulty    String?
+  domain        String?
+
+  importantSkills Json?
+  secondarySkills Json?
+
+  createdAt DateTime @default(now())
+
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LinkedinProfile {
+  id String @id @default(uuid())
+
+  userId String
+
+  rawText Json?
+
+  analysis Json?
+
+  score Int?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PortfolioProfile {
+  id String @id @default(uuid())
+
+  userId String
+
+  rawText Json?
+
+  analysis Json?
+
+  score Int?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
