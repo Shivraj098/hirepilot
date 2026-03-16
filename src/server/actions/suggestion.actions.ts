@@ -32,12 +32,21 @@ export async function applySuggestion(suggestionId: string) {
   };
 
   // ✅ update content
-  await prisma.resumeVersion.update({
-    where: { id: resumeVersion.id },
-    data: {
-      content: updatedContent as Prisma.InputJsonValue,
-    },
-  });
+const newVersion = await prisma.resumeVersion.create({
+  data: {
+    resumeId: resumeVersion.resumeId,
+    userId: user.id,
+    jobId: resumeVersion.jobId,
+    content: updatedContent as Prisma.InputJsonValue,
+
+    parentId: resumeVersion.id,
+
+    versionType: resumeVersion.versionType,
+
+    createdBy: "USER",
+    label: "After suggestion",
+  },
+});
 
   // mark suggestion applied
   await prisma.aISuggestion.update({
@@ -60,10 +69,10 @@ export async function applySuggestion(suggestionId: string) {
 
   await logActivity({
     userId: user.id,
-    type: "SUGGESTION_APPLIED",
-    message: "Suggestion applied",
+    type: "VERSION_UPDATED",
+    message: "Version updated after applying suggestion",
   });
-  await recalculateATS(resumeVersion.id);
+  await recalculateATS(newVersion.id);
 
   revalidatePath(`/dashboard/jobs/${resumeVersion.jobId}`);
 }
