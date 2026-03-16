@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { Prisma, JobStatus } from "@prisma/client";
-
+import { logActivity } from "@/server/features/activity/activity.service";
 export async function createJob(data: {
   title: string;
   company: string;
@@ -25,6 +25,12 @@ export async function createJob(data: {
       jobLink: data.jobLink,
     },
   });
+
+  await logActivity({
+  userId: user.id,
+  type: "JOB_CREATED",
+  message: "Job added",
+});
 
   revalidatePath("/dashboard");
   return job;

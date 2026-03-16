@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { recalculateATS } from "@/server/ai/recalculate-ats";
-
+import { logActivity } from "@/server/features/activity/activity.service";
 export async function applySuggestion(suggestionId: string) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
@@ -58,6 +58,11 @@ export async function applySuggestion(suggestionId: string) {
   // SAVE ATS
   // =====================
 
+  await logActivity({
+    userId: user.id,
+    type: "SUGGESTION_APPLIED",
+    message: "Suggestion applied",
+  });
   await recalculateATS(resumeVersion.id);
 
   revalidatePath(`/dashboard/jobs/${resumeVersion.jobId}`);
