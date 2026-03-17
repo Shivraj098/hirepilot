@@ -66,9 +66,22 @@ export function calculateSkillGap(
   );
 
   return {
-    matchedSkills,
-    missingSkills,
-    matchPercentage: ats.score,
-    jobFrequencyMap,
-  };
+  matchedSkills,
+  missingSkills,
+  matchPercentage: ats.score,
+  jobFrequencyMap,
+
+  roadmap: missingSkills.map(skill => ({
+    skill,
+    priority:
+      jobFrequencyMap[skill] >= 2
+        ? "HIGH"
+        : "MEDIUM",
+
+    estimatedTime:
+      jobFrequencyMap[skill] >= 2
+        ? "2-4 weeks"
+        : "1-2 weeks",
+  })),
+};
 }

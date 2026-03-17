@@ -16,3 +16,18 @@ export async function getLatestVersion(
     },
   });
 }
+
+export async function getVersions(
+  resumeId: string,
+  userId: string
+) {
+  return prisma.resumeVersion.findMany({
+    where: {
+      resumeId,
+      userId,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}

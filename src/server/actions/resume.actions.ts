@@ -335,7 +335,6 @@ export async function createTailoredVersionForJob(
 ) {
   const user = await getCurrentUser();
 
-
   if (!user?.id) {
     throw new Error("Unauthorized");
   }
@@ -379,13 +378,11 @@ export async function createTailoredVersionForJob(
   });
 
   await saveTailorResult({
-  baseVersionId: baseVersion.id,
-  newVersionId: tailoredVersion.id,
-  jobId: job.id,
-  userId: user.id,
-});
-
- 
+    baseVersionId: baseVersion.id,
+    newVersionId: tailoredVersion.id,
+    jobId: job.id,
+    userId: user.id,
+  });
 
   await recalculateATS(tailoredVersion.id);
 
@@ -404,7 +401,7 @@ export async function createTailoredVersionForJob(
 }
 
 import { analyzeResumeProfile } from "../ai/resume-intelligence";
-import { getLatestVersion } from "../features/resume/version.service";
+import { getLatestVersion } from "../features/version/version.service";
 
 export async function analyzeResume(resumeId: string) {
   const user = await getCurrentUser();
@@ -421,10 +418,23 @@ export async function analyzeResume(resumeId: string) {
 
   const result = await analyzeResumeProfile(baseVersion.content);
 
+  if (result) {
+    await saveResumeAnalysis({
+      resumeVersionId: baseVersion.id,
+      userId: user.id,
+
+      profileScore: result.profileScore,
+
+      strengths: result.strengths,
+      weaknesses: result.weaknesses,
+      recommendedSkills: result.recommendedSkills,
+    });
+  }
+
   await logActivity({
     userId: user.id,
-    type: "RESUME_ANALYZED",
-    message: "Analyzed resume",
+    type: "RESUME_INTELLIGENCE",
+    message: "Analyzed resume with AI",
   });
 
   return result;
@@ -463,7 +473,7 @@ export async function analyzeJobForUser(jobId: string) {
 
     await logActivity({
       userId: user.id,
-      type: "JOB_ANALYZED",
+      type: "JOB_INTELLIGENCE",
       message: "Job analyzed",
     });
   }
@@ -502,16 +512,19 @@ export async function getJobMatch(resumeId: string, jobId: string) {
       resumeVersionId: baseVersion.id,
       jobId,
       userId: user.id,
+
       matchScore: result.matchScore,
       fitLevel: result.fitLevel,
       shouldApply: result.shouldApply,
+
       missingSkills: result.missingSkills ?? [],
-      reason: result.reason,
+      reason: result.reason ?? "",
     });
+
     await logActivity({
       userId: user.id,
-      type: "JOB_MATCHED",
-      message: "Job match calculated",
+      type: "MATCH_ANALYZED",
+      message: "Job match analyzed",
     });
   }
 

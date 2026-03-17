@@ -1,20 +1,17 @@
 "use server";
-import { createApplication , updateApplicationStatus } from "@/server/features/application/application.service";
+import {
+  createApplication,
+  updateApplicationStatus,
+} from "@/server/features/application/application.service";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/server/features/activity/activity.service";
-import { getLatestVersion } from "@/server/features/resume/version.service";
+import { getLatestVersion } from "@/server/features/version/version.service";
 
-export async function applyToJob(
-  resumeId: string,
-  jobId: string
-) {
+export async function applyToJob(resumeId: string, jobId: string) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
 
-  const version = await getLatestVersion(
-    resumeId,
-    user.id
-  );
+  const version = await getLatestVersion(resumeId, user.id);
 
   if (!version) throw new Error("No version");
 
@@ -37,7 +34,7 @@ export async function applyToJob(
 
 export async function changeApplicationStatus(
   applicationId: string,
-  status: string
+  status: string,
 ) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
@@ -48,8 +45,8 @@ export async function changeApplicationStatus(
   });
 
   await logActivity({
-  userId: user.id,
-  type: "APPLICATION_STATUS",
-  message: `Application status → ${status}`,
-});
+    userId: user.id,
+    type: "APPLICATION_STATUS",
+    message: `Application status → ${status}`,
+  });
 }

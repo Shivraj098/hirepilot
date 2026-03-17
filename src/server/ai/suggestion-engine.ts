@@ -33,6 +33,8 @@ type SectionSuggestion = {
   section: keyof StructuredResumeContent;
   originalContent: Prisma.InputJsonValue;
   suggestedContent: Prisma.InputJsonValue;
+  priority?: string;
+  impactscore?: number;
 };
 
 /*
@@ -54,6 +56,8 @@ function generateRuleSuggestions(
       suggestedContent: `${resumeContent.summary}
 
 Optimized to match job-required skills.`,
+      priority: "MEDIUM",
+      impactscore: 40,
     });
   }
 
@@ -67,6 +71,8 @@ Optimized to match job-required skills.`,
         ...existing,
         ...skillGap.missingSkills.filter((s) => !existing.includes(s)),
       ],
+      priority: "HIGH",
+      impactscore: 60,
     });
   }
 
@@ -153,6 +159,10 @@ ${jobDescription}
           resumeContent[s.section] === null ||
           resumeContent[s.section] === undefined,
         suggestedContent: s.suggestedContent,
+
+        priority: s.priority,
+        impactscore: s.impactScore ?? 50,
+        type: s.type ?? "improve",
       }));
   } catch (err) {
     console.error("AI suggestion error", err);
