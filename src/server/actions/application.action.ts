@@ -48,8 +48,8 @@ export async function changeApplicationStatus(
   });
 
   await logActivity({
-    userId: user.id,
-    type: "APPLICATION_STATUS",
-    message: `Status changed to ${status}`,
-  });
+  userId: user.id,
+  type: "APPLICATION_STATUS",
+  message: `Application status → ${status}`,
+});
 }
