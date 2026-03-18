@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { runAI } from "@/server/ai/orchestrator";
 
 export async function analyzeLinkedinProfile(
   text: string
@@ -19,5 +19,5 @@ Profile:
 ${text}
 `;
 
-  return aiJsonCompletion(prompt);
+  return runAI(prompt);
 }

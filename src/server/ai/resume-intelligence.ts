@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { runAI } from "./orchestrator";
 
 export type ResumeIntelligence = {
   profileScore: number;
@@ -26,40 +26,40 @@ export async function analyzeResumeProfile(
   resumeContent: unknown
 ): Promise<ResumeIntelligence | null> {
   const prompt = `
-You are an AI career coach.
+You are a senior recruiter, ATS reviewer, and career coach.
 
-Analyze this resume.
+Analyze resume deeply.
 
-Return JSON only.
-
-Format:
+Return JSON:
 
 {
-  "profileScore": number,
-  "careerLevel": string,
-  "experienceLevel": string,
-  "resumeQuality": string,
-  "strengths": string[],
-  "weaknesses": string[],
-  "preferredRoles": string[],
-  "recommendedSkills": string[],
-  "topDomains": string[],
-  "jobFitHint": string
+ profileScore: number,
+ atsScore: number,
+ clarityScore: number,
+ impactScore: number,
+ experienceScore: number,
+
+ strengths: string[],
+ weaknesses: string[],
+ missingSkills: string[],
+ improvementTips: string[],
+ recommendedRoles: string[],
+ careerLevel: string,
+ summaryFeedback: string
 }
 
 Rules:
 
-- profileScore = 0-100
-- careerLevel = Beginner | Junior | Mid | Senior
-- experienceLevel = Low | Medium | High
-- resumeQuality = Poor | Average | Good | Strong
+- Score 0-100
+- Be strict
+- Use resume content only
 
 Resume:
-${JSON.stringify(resumeContent, null, 2)}
+${JSON.stringify(resumeContent)}
 `;
 
   const result =
-    await aiJsonCompletion<ResumeIntelligence>(
+    await runAI<ResumeIntelligence>(
       prompt,
       {
         temperature: 0.2,

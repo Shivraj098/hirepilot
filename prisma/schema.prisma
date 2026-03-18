@@ -414,3 +414,14 @@ model PortfolioProfile {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+
+model AICache {
+  id        String   @id @default(uuid())
+
+  key       String   @unique
+  prompt    String
+  result    Json
+
+  createdAt DateTime @default(now())
+}

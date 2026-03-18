@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { runAI } from "./orchestrator";
 import { calculateATS } from "./ats-engine";
 import { checkAIGuard } from "./ai-guard";
 import { ResumeScoreResult } from "@/server/types/score.types";
@@ -43,7 +43,7 @@ ATS Score:
 ${ats ? ats.score : 0}
 `;
 
-  const result = await aiJsonCompletion<ResumeScoreResult>(prompt, {
+  const result = await runAI<ResumeScoreResult>(prompt, {
     temperature: 0.2,
   });
 

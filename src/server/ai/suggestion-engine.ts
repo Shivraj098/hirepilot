@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { aiJsonCompletion } from "./client";
+import { runAI } from "@/server/ai/orchestrator";
 import { parseResumeContent } from "../utils/resume-parser";
 import { calculateATS } from "./ats-engine";
 
@@ -98,6 +98,14 @@ You are an expert resume reviewer AI.
 
 Suggest improvements.
 
+Explain why suggestion
+
+ImpactScore realistic
+
+Priority realistic 
+
+Explain why change improves ATS or clarity 
+
 Return JSON array.
 
 Format:
@@ -135,7 +143,7 @@ ${jobDescription}
 `;
 
   try {
-    const result = await aiJsonCompletion<
+    const result = await runAI<
       {
         section: keyof StructuredResumeContent;
         suggestedContent: Prisma.InputJsonValue;

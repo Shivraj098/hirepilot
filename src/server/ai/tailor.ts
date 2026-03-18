@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { runAI } from "./orchestrator";
 import { parseResumeContent } from "../utils/resume-parser";
 import { calculateATS } from "./ats-engine";
 
@@ -60,7 +60,7 @@ Return JSON only.
 `;
 
   try {
-    const result = await aiJsonCompletion<ResumeContent>(prompt, {
+    const result = await runAI<ResumeContent>(prompt, {
       temperature: 0.2,
     });
 

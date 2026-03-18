@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { runAI } from "./orchestrator";
 
 export type JobIntelligence = {
   roleCategory: string;
@@ -49,7 +49,7 @@ ${jobDescription}
 `;
 
   const result =
-    await aiJsonCompletion<JobIntelligence>(
+    await runAI<JobIntelligence>(
       prompt,
       {
         temperature: 0.2,

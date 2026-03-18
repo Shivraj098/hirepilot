@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { runAI } from "./orchestrator";
 
 export type JobMatchResult = {
   matchScore: number;
@@ -57,7 +57,7 @@ ${jobDescription}
 `;
 
   const result =
-    await aiJsonCompletion<JobMatchResult>(
+    await runAI<JobMatchResult>(
       prompt,
       {
         temperature: 0.2,

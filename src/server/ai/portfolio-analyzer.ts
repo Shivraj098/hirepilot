@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { runAI } from "@/server/ai/orchestrator";
 
 export async function analyzePortfolio(
   text: string
@@ -19,5 +19,5 @@ Portfolio:
 ${text}
 `;
 
-  return aiJsonCompletion(prompt);
+  return runAI(prompt);
 }
