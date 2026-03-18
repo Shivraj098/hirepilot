@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { runAI } from "@/server/ai/orchestrator";
-import { parseResumeContent } from "../utils/resume-parser";
+import { parseResumeContent } from "../../utils/resume-parser";
 import { calculateATS } from "./ats-engine";
 
 type ExperienceItem = {

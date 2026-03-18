@@ -1,4 +1,5 @@
 "use server";
+import { recalculateResumePipeline } from "../orchestrators/resume-orchestrator";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -6,7 +7,6 @@ import { Prisma } from "@prisma/client";
 import { analyzeJob } from "@/server/ai/job/job-intelligence";
 import { analyzeJobMatch } from "@/server/ai/job/job-match";
 import { calculateResumeScore } from "../ai/resume/resume-score";
-import { recalculateATS } from "../ai/recalculate-ats";
 import {
   saveJobAnalysis,
   saveMatchResult,
@@ -100,6 +100,7 @@ export async function updateResumeSummary(resumeId: string, summary: string) {
       createdBy: "USER",
     },
   });
+  
 
   revalidatePath(`/dashboard/${resumeId}`);
 }
@@ -140,6 +141,8 @@ export async function addExperience(
       createdBy: "USER",
     },
   });
+
+    
   revalidatePath(`/dashboard/${resumeId}`);
 }
 
@@ -384,7 +387,7 @@ export async function createTailoredVersionForJob(
     userId: user.id,
   });
 
-  await recalculateATS(tailoredVersion.id);
+  await recalculateResumePipeline(tailoredVersion.id, user.id);
 
   await logActivity({
     userId: user.id,
@@ -392,7 +395,7 @@ export async function createTailoredVersionForJob(
     type: "RESUME_TAILORED",
     message: `Tailored resume for ${job.title}`,
   });
-  await recalculateATS(tailoredVersion.id);
+  
 
   revalidatePath(`/dashboard/${resumeId}`);
   revalidatePath("/dashboard");

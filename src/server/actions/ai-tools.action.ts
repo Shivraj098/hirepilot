@@ -2,7 +2,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { analyzeLinkedinProfile } from "@/server/ai/linkedin-analyzer";
+import { analyzeLinkedinProfile } from "@/server/ai/job/linkedin-analyzer";
 import { logActivity } from "@/server/features/activity/activity.service";
 
 type LinkedinResult = {
@@ -34,7 +34,7 @@ export async function analyzeLinkedin(text: string) {
 }
 
 
-import { analyzePortfolio } from "@/server/ai/portfolio-analyzer";
+import { analyzePortfolio } from "@/server/ai/job/portfolio-analyzer";
  
 type PortfolioResult = {
   score: number;

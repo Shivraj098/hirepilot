@@ -6,11 +6,10 @@ import { revalidatePath } from "next/cache";
 
 import { generateInterviewPrep } from "@/server/ai/interview-generator";
 import { generateAIInterviewPrep } from "@/server/ai/interview/interview-ai";
-import { generateSectionSuggestions } from "@/server/ai/suggestion-engine";
+import { generateSectionSuggestions } from "@/server/ai/resume/suggestion-engine";
 import { calculateSkillGap } from "@/server/ai/skill-gap";
-import { tailorResumeWithAI } from "@/server/ai/tailor";
-import { recalculateATS } from "@/server/ai/recalculate-ats";
-
+import { tailorResumeWithAI } from "@/server/ai/resume/tailor";
+import { recalculateResumePipeline } from "../orchestrators/resume-orchestrator";
 import type {
   ResumeContent,
   StructuredResumeContent,
@@ -59,19 +58,23 @@ export async function createTailoredVersionWithAI(
 
   // ---------- CREATE VERSION ----------
 
-  const newVersion = await prisma.resumeVersion.create({
-    data: {
-      resumeId,
-      userId: user.id,
-      jobId,
-      content: tailoredContent,
-      versionType: "TAILORED",
-    },
-  });
+const newVersion = await prisma.resumeVersion.create({
+  data: {
+    resumeId,
+    userId: user.id,
+    jobId,
+    content: tailoredContent,
+    versionType: "TAILORED",
+
+    parentId: baseVersion.id,
+    createdBy: "AI",
+    label: `AI Tailored for ${job.title}`,
+  },
+});
 
   // ---------- ATS ----------
 
-  await recalculateATS(newVersion.id);
+  await recalculateResumePipeline(newVersion.id, user.id);
 
   // ---------- SKILL GAP ----------
 
@@ -80,7 +83,7 @@ export async function createTailoredVersionWithAI(
   // ---------- SUGGESTIONS ----------
 
   const suggestions = await generateSectionSuggestions(
-    tailoredContent as StructuredResumeContent,
+    tailoredContent,
     skillGap,
     job.description,
   );

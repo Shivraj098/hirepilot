@@ -2,8 +2,8 @@
 import { applySuggestionAndCreateVersion } from "../services/suggestion.service";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { recalculateATS } from "@/server/ai/recalculate-ats";
 import { logActivity } from "@/server/features/activity/activity.service";
+import { recalculateResumePipeline } from "../orchestrators/resume-orchestrator";
 export async function applySuggestion(suggestionId: string) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
@@ -17,7 +17,7 @@ export async function applySuggestion(suggestionId: string) {
     type: "VERSION_UPDATED",
     message: "Version updated after applying suggestion",
   });
-  await recalculateATS(newVersion.id);
+  await recalculateResumePipeline(newVersion.id,user.id);
 
   revalidatePath(`/dashboard/jobs/${newVersion.jobId}`);
 }

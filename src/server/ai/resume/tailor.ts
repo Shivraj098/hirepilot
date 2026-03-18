@@ -1,5 +1,5 @@
 import { runAI } from "./orchestrator";
-import { parseResumeContent } from "../utils/resume-parser";
+import { parseResumeContent } from "../../utils/resume-parser";
 import { calculateATS } from "./ats-engine";
 
 type ExperienceEntry = {
