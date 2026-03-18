@@ -2,6 +2,8 @@ import { aiJsonCompletion } from "./core/client";
 import { parseResumeContent } from "../utils/resume-parser";
 
 export type JobSuggestions = {
+  map: any;
+  length: number;
   roles: string[];
 
   keywords: string[];

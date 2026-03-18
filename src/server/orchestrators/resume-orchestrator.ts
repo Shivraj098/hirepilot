@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { calculateATS } from "@/server/ai/resume/ats-engine";
 import { calculateResumeScore } from "@/server/ai/resume/resume-score";
-import { generateSkillGaps } from "@/server/ai/skills/skill-gap-generator";
+import { generateSkillGaps } from "@/server/ai/skills/skillgap-generator";
 import { generateJobSuggestions } from "@/server/ai/job/job-suggestions";
 import { analyzeResumeHealth } from "@/server/ai/resume/resume-health";
 
@@ -80,11 +80,44 @@ export async function recalculateResumePipeline(
   }
 
   // Suggestions
-  try {
-    await generateJobSuggestions(content);
-  } catch (e) {
-    logError("Suggestions failed", e);
+  // Job Suggestions
+try {
+
+  const suggestions =
+    await generateJobSuggestions(
+      content
+    );
+
+  if (
+    suggestions &&
+    suggestions.length > 0
+  ) {
+    await prisma.jobAnalysis.createMany({
+      data: suggestions.map(
+        (s) => ({
+          userId,
+
+          roleCategory:
+            s.roleCategory ?? null,
+
+          domain:
+            s.domain ?? null,
+
+          summary:
+            s.summary ?? null,
+        })
+      ),
+    });
   }
+
+} catch (e) {
+
+  logError(
+    "Suggestions failed",
+    e
+  );
+
+}
 
   // Skill Gap
   try {

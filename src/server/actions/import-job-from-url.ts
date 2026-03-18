@@ -2,22 +2,20 @@
 
 import { prisma } from "@/lib/db/prisma";
 
-import { fetchJobHtml } from "@/server/job-parser/fetch-job";
-import { cleanHtmlToText } from "@/server/job-parser/clean-html";
-import { extractJobFromText } from "@/server/ai/job-extract";
+import { urlToText } from "@/server/utils/url-to-text";
+import { extractJobFromText } from "@/server/ai/job/job-extract";
+import { logActivity } from "@/server/features/activity/activity.service";
 
 export async function importJobFromUrl(
   url: string,
   userId: string
 ) {
   try {
-    // 1 fetch html
-    const html =
-      await fetchJobHtml(url);
+   const text = await urlToText(url);
 
-    // 2 clean text
-    const text =
-      cleanHtmlToText(html);
+   if (!text || text.length < 50) {
+  throw new Error("Could not read job page");
+}
 
     // 3 ai extract
     const job =
@@ -46,6 +44,12 @@ export async function importJobFromUrl(
             job.description,
         },
       });
+
+      await logActivity({
+  userId,
+  type: "JOB_IMPORTED",
+  message: "Job imported from URL",
+});
 
     return created;
   } catch (err) {

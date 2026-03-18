@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { calculateSkillGap } from "@/server/ai/skill-gap";
+import { calculateSkillGap } from "@/server/ai/skills/skill-gap";
 import { applySuggestion } from "@/server/actions/suggestion.actions";
 import { regenerateInterviewPrep } from "@/server/actions/interview.action";
 import Card from "@/components/ui/card";
@@ -156,7 +156,7 @@ export default async function JobDetailPage({ params }: Props) {
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {skillGap.matchedSkills.map((skill) => (
+                {skillGap.matchedSkills.map((skill: string) => (
                   <span
                     key={skill}
                     className="
@@ -183,7 +183,7 @@ export default async function JobDetailPage({ params }: Props) {
               <p className="text-sm text-muted-foreground">No gaps detected.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {skillGap.missingSkills.map((skill) => (
+                {skillGap.missingSkills.map((skill: string) => (
                   <span
                     key={skill}
                     className="

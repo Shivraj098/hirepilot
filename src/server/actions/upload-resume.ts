@@ -6,6 +6,7 @@ import { parseDocx } from "@/server/resume-parser/parse-docx";
 import { extractResumeJson } from "@/server/ai/resume/resume-extract";
 import { assertResumeOwner } from "../auth/permissions";
 import { getCurrentUser } from "@/lib/auth";
+import { recalculateResumePipeline } from "../orchestrators/resume-orchestrator";
 
 export async function uploadResume(file: File, resumeId: string) {
   try {
@@ -42,6 +43,7 @@ export async function uploadResume(file: File, resumeId: string) {
       versionType: "BASE",
       createdBy: "AI",
     });
+    await recalculateResumePipeline(version.id, user.id);
 
     return version;
   } catch (err) {

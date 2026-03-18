@@ -1,18 +1,33 @@
 "use server";
+import { urlToText } from "../utils/url-to-text";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { analyzeLinkedinProfile } from "@/server/ai/job/linkedin-analyzer";
+
+import { analyzeLinkedinProfile } from "@/server/ai/resume/linkedin-analyzer";
+import { analyzePortfolio } from "@/server/ai/resume/portfolio-analyzer";
+
 import { logActivity } from "@/server/features/activity/activity.service";
 
 type LinkedinResult = {
-  score: number;
-}  
-export async function analyzeLinkedin(text: string) {
+  score?: number;
+};
+
+type PortfolioResult = {
+  score?: number;
+};
+
+/* ================================
+   LINKEDIN ANALYSIS
+================================ */
+
+export async function analyzeLinkedin(input: string) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
 
-  const result = await analyzeLinkedinProfile(text) as LinkedinResult;
+  const text = await urlToText(input);
+
+  const result = (await analyzeLinkedinProfile(text)) as LinkedinResult;
 
   const saved = await prisma.linkedinProfile.create({
     data: {
@@ -23,7 +38,6 @@ export async function analyzeLinkedin(text: string) {
     },
   });
 
-  
   await logActivity({
     userId: user.id,
     type: "LINKEDIN_ANALYZED",
@@ -33,17 +47,17 @@ export async function analyzeLinkedin(text: string) {
   return saved;
 }
 
+/* ================================
+   PORTFOLIO ANALYSIS
+================================ */
 
-import { analyzePortfolio } from "@/server/ai/job/portfolio-analyzer";
- 
-type PortfolioResult = {
-  score: number;
-}
-export async function analyzePortfolioAction(text: string) {
+export async function analyzePortfolioAction(input: string) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
 
-  const result = await analyzePortfolio(text) as PortfolioResult;
+  const text = await urlToText(input);
+
+  const result = (await analyzePortfolio(text)) as PortfolioResult;
 
   const saved = await prisma.portfolioProfile.create({
     data: {

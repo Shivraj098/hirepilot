@@ -1,36 +1,30 @@
-import { prisma } from "@/lib/db/prisma";
+import { parseResumeContent } from "../utils/resume-parser";
 
-import { exportResumePDF } from "./pdf";
-import { exportResumeDocx } from "./docx";
-import { assertVersionOwner } from "../auth/permissions";
-export async function exportResumeByVersion(
-  versionId: string,
-  type: "pdf" | "docx",
-  userId: string
-) {
-    await assertVersionOwner(
-  versionId,
-  userId
-);
+export function formatResumeText(content: unknown): string {
+  const r = parseResumeContent(content);
 
-  const version =
-    await prisma.resumeVersion.findUnique({
-      where: {
-        id: versionId,
-      },
-    });
+  let text = "";
 
-  if (!version) {
-    return null;
+  text += "SUMMARY\n";
+  text += r.summary + "\n\n";
+
+  text += "SKILLS\n";
+  text += r.skills.join(", ");
+  text += "\n\n";
+
+  text += "EXPERIENCE\n";
+
+  for (const e of r.experience) {
+    text += JSON.stringify(e);
+    text += "\n";
   }
 
-  if (type === "pdf") {
-    return exportResumePDF(
-      version.content
-    );
+  text += "\nEDUCATION\n";
+
+  for (const e of r.education) {
+    text += JSON.stringify(e);
+    text += "\n";
   }
 
-  return exportResumeDocx(
-    version.content
-  );
+  return text;
 }

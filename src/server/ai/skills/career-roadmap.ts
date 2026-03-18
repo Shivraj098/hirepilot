@@ -1,4 +1,5 @@
-import { aiJsonCompletion } from "./core/client";
+import { aiJsonCompletion } from "../core/client";
+import { urlToText } from "@/server/utils/url-to-text";
 
 export type CareerStep = {
   skill: string;
@@ -11,14 +12,20 @@ export type CareerStep = {
 
 export async function generateCareerRoadmap(
   missingSkills: string[],
-  jobDescription: string,
+  jobInput: string,
 ): Promise<CareerStep[]> {
   if (missingSkills.length === 0) return [];
+
+  const jobDescription = await urlToText(jobInput);
+
+  if (!jobDescription || jobDescription.length < 20) {
+    return [];
+  }
 
   const prompt = `
 You are an AI career coach.
 
-Create a learning roadmap for these missing skills.
+Create a learning roadmap.
 
 Return JSON array.
 

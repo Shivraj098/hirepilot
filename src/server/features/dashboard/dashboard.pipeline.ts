@@ -5,30 +5,35 @@ import { prisma } from "@/lib/db/prisma";
 export async function getPipelineStats(
   userId: string
 ) {
-  const apps =
-    await prisma.jobApplication.findMany({
-      where: { userId },
+
+  const jobs =
+    await prisma.job.groupBy({
+
+      by: ["status"],
+
+      where: {
+        userId,
+      },
+
+      _count: {
+        status: true,
+      },
+
     });
 
-  const interviews =
-    apps.filter(
-      (a) => a.status === "INTERVIEW"
-    ).length;
-
-  const offers =
-    apps.filter(
-      (a) => a.status === "OFFER"
-    ).length;
-
-  const rejected =
-    apps.filter(
-      (a) => a.status === "REJECTED"
-    ).length;
-
-  return {
-    total: apps.length,
-    interviews,
-    offers,
-    rejected,
+  const result = {
+    SAVED: 0,
+    APPLIED: 0,
+    INTERVIEW: 0,
+    OFFER: 0,
+    REJECTED: 0,
   };
+
+  for (const j of jobs) {
+    result[j.status] =
+      j._count.status;
+  }
+
+  return result;
+
 }
