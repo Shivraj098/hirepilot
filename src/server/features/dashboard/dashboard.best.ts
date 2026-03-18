@@ -2,27 +2,27 @@
 
 import { prisma } from "@/lib/db/prisma";
 
-export async function getInsights(
+export async function getBestData(
   userId: string
 ) {
-  const latestAnalysis =
+  const bestResume =
     await prisma.resumeAnalysis.findFirst({
       where: { userId },
       orderBy: {
-        createdAt: "desc",
+        score: "desc",
       },
     });
 
-  const latestJob =
-    await prisma.jobAnalysis.findFirst({
+  const bestMatch =
+    await prisma.matchResult.findFirst({
       where: { userId },
       orderBy: {
-        createdAt: "desc",
+        matchScore: "desc",
       },
     });
 
   return {
-    latestAnalysis,
-    latestJob,
+    bestResume,
+    bestMatch,
   };
 }

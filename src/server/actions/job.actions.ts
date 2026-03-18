@@ -60,7 +60,7 @@ export async function createJob(data: {
 
       score: jobScore?.score ?? undefined ,
 
-      summary: jobScore?.summary ?? undefined ,
+      summary: jobScore?.summary ?? undefined,
     });
 
     await logActivity({

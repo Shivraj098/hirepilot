@@ -2,14 +2,14 @@
 
 import { prisma } from "@/lib/db/prisma";
 
-export async function getScoreTrend(
+export async function getRecentActivity(
   userId: string
 ) {
-  return prisma.scoreHistory.findMany({
+  return prisma.activity.findMany({
     where: { userId },
     orderBy: {
-      createdAt: "asc",
+      createdAt: "desc",
     },
-    take: 20,
+    take: 10,
   });
 }
