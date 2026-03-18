@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { aiJsonCompletion } from "./core/client";
 import { parseResumeContent } from "../utils/resume-parser";
 
 export type JobSuggestions = {

@@ -42,3 +42,5 @@ export async function runAI<T>(
     return null;
   }
 }
+
+export { aiJsonCompletion };

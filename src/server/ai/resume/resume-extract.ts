@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { aiJsonCompletion } from "../core/client";
 
 export interface ResumeJson {
   summary: string;

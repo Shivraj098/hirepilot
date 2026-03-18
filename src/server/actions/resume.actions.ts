@@ -3,9 +3,9 @@ import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
-import { analyzeJob } from "@/server/ai/job-intelligence";
-import { analyzeJobMatch } from "@/server/ai/job-match";
-import { calculateResumeScore } from "../ai/resume-score";
+import { analyzeJob } from "@/server/ai/job/job-intelligence";
+import { analyzeJobMatch } from "@/server/ai/job/job-match";
+import { calculateResumeScore } from "../ai/resume/resume-score";
 import { recalculateATS } from "../ai/recalculate-ats";
 import {
   saveJobAnalysis,
@@ -400,7 +400,7 @@ export async function createTailoredVersionForJob(
   return tailoredVersion;
 }
 
-import { analyzeResumeProfile } from "../ai/resume-intelligence";
+import { analyzeResumeProfile } from "../ai/resume/resume-intelligence";
 import { getLatestVersion } from "../features/version/version.service";
 
 export async function analyzeResume(resumeId: string) {

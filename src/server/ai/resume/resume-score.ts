@@ -1,5 +1,5 @@
 import { runAI } from "./orchestrator";
-import { calculateATS } from "./ats-engine";
+import { calculateATS } from "../ats-engine";
 import { checkAIGuard } from "./ai-guard";
 import { ResumeScoreResult } from "@/server/types/score.types";
 

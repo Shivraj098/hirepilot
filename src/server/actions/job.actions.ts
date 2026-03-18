@@ -1,6 +1,6 @@
 "use server";
-import { calculateJobScore } from "../ai/job-score";
-import { analyzeJob } from "../ai/job-intelligence";
+import { calculateJobScore } from "../ai/job/job-score";
+import { analyzeJob } from "../ai/job/job-intelligence";
 import { saveJobAnalysis } from "../features/analysis/analysis.service";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -58,7 +58,7 @@ export async function createJob(data: {
 
       secondarySkills: jobAnalysis.secondarySkills ?? [],
 
-      score: jobScore?.score ?? undefined ,
+      score: jobScore?.score ?? undefined,
 
       summary: jobScore?.summary ?? undefined,
     });

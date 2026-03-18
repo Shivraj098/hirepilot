@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { aiJsonCompletion } from "./core/client";
 
 type SkillGapResult = {
   matchedSkills: string[];
@@ -25,8 +25,6 @@ type AIGap = {
   learningLink?: string;
 };
 
-
-
 /*
 ========================================
 AI generator
@@ -35,9 +33,8 @@ AI generator
 
 async function generateSkillGapsAI(
   jobDescription: string,
-  skillGap: SkillGapResult
+  skillGap: SkillGapResult,
 ): Promise<GeneratedGap[] | null> {
-
   if (!skillGap.missingSkills.length) {
     return [];
   }
@@ -68,24 +65,20 @@ ${skillGap.missingSkills.join(", ")}
 Job description:
 ${jobDescription}
 `;
-  const result =
-    await aiJsonCompletion<AIGap[]>(
-      prompt,
-      { temperature: 0.3 }
-    );
+  const result = await aiJsonCompletion<AIGap[]>(prompt, { temperature: 0.3 });
 
   if (!result) {
     return null;
   }
 
- return result.map((r) => ({
-  skill: r.skill,
-  priority: r.priority,
-  estimatedTime: r.estimatedTime,
-  reasoning: r.reasoning,
-  difficulty: r.difficulty ?? "MEDIUM",
-  learningLink: r.learningLink ?? "",
-}));
+  return result.map((r) => ({
+    skill: r.skill,
+    priority: r.priority,
+    estimatedTime: r.estimatedTime,
+    reasoning: r.reasoning,
+    difficulty: r.difficulty ?? "MEDIUM",
+    learningLink: r.learningLink ?? "",
+  }));
 }
 
 /*
@@ -94,19 +87,15 @@ Fallback (safe)
 ========================================
 */
 
-function fallbackSkillGaps(
-  skillGap: SkillGapResult
-): GeneratedGap[] {
-  return skillGap.missingSkills.map(
-    (skill) => ({
-      skill,
-      priority: "MEDIUM",
-      estimatedTime: "1-2 weeks",
-      reasoning: `${skill} missing from resume`,
-      difficulty: "MEDIUM",
-      learningLink: "",
-    })
-  );
+function fallbackSkillGaps(skillGap: SkillGapResult): GeneratedGap[] {
+  return skillGap.missingSkills.map((skill) => ({
+    skill,
+    priority: "MEDIUM",
+    estimatedTime: "1-2 weeks",
+    reasoning: `${skill} missing from resume`,
+    difficulty: "MEDIUM",
+    learningLink: "",
+  }));
 }
 
 /*
@@ -117,12 +106,9 @@ Main
 
 export async function generateSkillGaps(
   jobDescription: string,
-  skillGap: SkillGapResult
+  skillGap: SkillGapResult,
 ): Promise<GeneratedGap[]> {
-  const ai = await generateSkillGapsAI(
-    jobDescription,
-    skillGap
-  );
+  const ai = await generateSkillGapsAI(jobDescription, skillGap);
 
   if (ai && ai.length > 0) {
     return ai;

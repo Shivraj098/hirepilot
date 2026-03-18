@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { aiJsonCompletion } from "./core/client";
 
 export type CareerStep = {
   skill: string;
@@ -11,7 +11,7 @@ export type CareerStep = {
 
 export async function generateCareerRoadmap(
   missingSkills: string[],
-  jobDescription: string
+  jobDescription: string,
 ): Promise<CareerStep[]> {
   if (missingSkills.length === 0) return [];
 
@@ -42,11 +42,9 @@ Job:
 ${jobDescription}
 `;
 
-  const result =
-    await aiJsonCompletion<CareerStep[]>(
-      prompt,
-      { temperature: 0.3 }
-    );
+  const result = await aiJsonCompletion<CareerStep[]>(prompt, {
+    temperature: 0.3,
+  });
 
   if (!result) return [];
 

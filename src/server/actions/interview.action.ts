@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 import { generateInterviewPrep } from "@/server/ai/interview-generator";
-import { generateAIInterviewPrep } from "@/server/ai/interview-ai";
+import { generateAIInterviewPrep } from "@/server/ai/interview/interview-ai";
 import { generateSectionSuggestions } from "@/server/ai/suggestion-engine";
 import { calculateSkillGap } from "@/server/ai/skill-gap";
 import { tailorResumeWithAI } from "@/server/ai/tailor";

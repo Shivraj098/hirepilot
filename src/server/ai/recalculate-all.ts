@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 
 import { recalculateATS } from "./recalculate-ats";
-import { calculateResumeScore } from "./resume-score";
+import { calculateResumeScore } from "./resume/resume-score";
 import { analyzeResumeHealth } from "./resume-health";
 import { generateSkillGaps } from "./skillgap-generator";
 import { generateJobSuggestions } from "./job-suggestions";

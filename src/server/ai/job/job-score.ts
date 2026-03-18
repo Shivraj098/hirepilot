@@ -1,4 +1,4 @@
-import { runAI } from "./orchestrator";
+import { runAI } from "../core/orchestrator";
 
 export type JobScoreResult = {
   score: number;

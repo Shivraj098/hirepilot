@@ -3,7 +3,7 @@ import { createResumeVersion } from "@/server/services/resume.service";
 
 import { parsePdf } from "@/server/resume-parser/parse-pdf";
 import { parseDocx } from "@/server/resume-parser/parse-docx";
-import { extractResumeJson } from "@/server/ai/resume-extract";
+import { extractResumeJson } from "@/server/ai/resume/resume-extract";
 import { assertResumeOwner } from "../auth/permissions";
 import { getCurrentUser } from "@/lib/auth";
 

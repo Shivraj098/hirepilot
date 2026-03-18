@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./client";
+import { aiJsonCompletion } from "../core/orchestrator";
 
 export interface ExtractedJob {
   title: string;
@@ -9,7 +9,7 @@ export interface ExtractedJob {
 }
 
 export async function extractJobFromText(
-  text: string
+  text: string,
 ): Promise<ExtractedJob | null> {
   const prompt = `
 Extract job information from the text below.
@@ -28,10 +28,7 @@ TEXT:
 ${text}
 `;
 
-  const result =
-    await aiJsonCompletion<ExtractedJob>(
-      prompt
-    );
+  const result = await aiJsonCompletion<ExtractedJob>(prompt);
 
   return result;
 }
