@@ -1,10 +1,13 @@
 "use server";
-
+import { calculateJobScore } from "../ai/job-score";
+import { analyzeJob } from "../ai/job-intelligence";
+import { saveJobAnalysis } from "../features/analysis/analysis.service";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { Prisma, JobStatus } from "@prisma/client";
 import { logActivity } from "@/server/features/activity/activity.service";
+
 export async function createJob(data: {
   title: string;
   company: string;
@@ -14,6 +17,10 @@ export async function createJob(data: {
 }) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
+
+  // =========================
+  // CREATE JOB
+  // =========================
 
   const job = await prisma.job.create({
     data: {
@@ -26,13 +33,63 @@ export async function createJob(data: {
     },
   });
 
+  // =========================
+  // AI ANALYSIS
+  // =========================
+
+  const jobAnalysis = await analyzeJob(job.description);
+
+  const jobScore = await calculateJobScore(job.description);
+
+  if (jobAnalysis) {
+    await saveJobAnalysis({
+      jobId: job.id,
+      userId: user.id,
+
+      roleCategory: jobAnalysis.roleCategory ?? null,
+
+      requiredLevel: jobAnalysis.requiredLevel ?? null,
+
+      difficulty: jobAnalysis.difficulty ?? null,
+
+      domain: jobAnalysis.domain ?? null,
+
+      importantSkills: jobAnalysis.importantSkills ?? [],
+
+      secondarySkills: jobAnalysis.secondarySkills ?? [],
+
+      score: jobScore?.score ?? undefined ,
+
+      summary: jobScore?.summary ?? undefined ,
+    });
+
+    await logActivity({
+      userId: user.id,
+      type: "JOB_ANALYZED",
+      message: "Job analyzed with AI",
+    });
+
+    await logActivity({
+      userId: user.id,
+      type: "JOB_SCORED",
+      message: "Job scored",
+    });
+  }
+
+  // =========================
+  // ACTIVITY
+  // =========================
+
   await logActivity({
-  userId: user.id,
-  type: "JOB_CREATED",
-  message: "Job added",
-});
+    userId: user.id,
+    type: "JOB_CREATED",
+    message: `Job added: ${job.title}`,
+    entityType: "job",
+    entityId: job.id,
+  });
 
   revalidatePath("/dashboard");
+
   return job;
 }
 
@@ -105,7 +162,7 @@ export async function updateJobMeta(
   data: {
     status?: JobStatus;
     notes?: string;
-  }
+  },
 ) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");

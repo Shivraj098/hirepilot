@@ -15,6 +15,9 @@ export async function saveResumeAnalysis(data: {
   strengths?: Prisma.InputJsonValue;
   weaknesses?: Prisma.InputJsonValue;
   recommendedSkills?: Prisma.InputJsonValue;
+  summary ?: string;
+  secondarySkills?: Prisma.InputJsonValue;
+  importantSkills?: Prisma.InputJsonValue;
 }) {
   return prisma.resumeAnalysis.create({
     data,
@@ -56,8 +59,16 @@ export async function saveJobAnalysis(data: {
   domain?: string;
   importantSkills?: Prisma.InputJsonValue;
   secondarySkills?: Prisma.InputJsonValue;
+  score?: number;
+  summary?: string;
 }) {
   return prisma.jobAnalysis.create({
     data,
   });
 }
+
+
+
+
+
+

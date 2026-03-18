@@ -377,6 +377,9 @@ model JobAnalysis {
   importantSkills Json?
   secondarySkills Json?
 
+  score         Int?
+  summary       String?
+
   createdAt DateTime @default(now())
 
   job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
