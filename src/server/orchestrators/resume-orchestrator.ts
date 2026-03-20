@@ -94,7 +94,8 @@ try {
   ) {
     await prisma.jobAnalysis.createMany({
       data: suggestions.map(
-        (s) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s: any ) => ({
           userId,
 
           roleCategory:
@@ -121,31 +122,33 @@ try {
 
   // Skill Gap
   try {
-    if (version.job?.description) {
-      const ats = calculateATS(content, version.job.description);
+    const job = version.job;
 
-      const gaps = await generateSkillGaps(version.job.description, {
-        matchedSkills: ats.matchedKeywords,
-        missingSkills: ats.missingKeywords,
-        matchPercentage: ats.score,
-      });
+if (!job?.description || !job.id) return;
 
-      await prisma.skillGap.deleteMany({
-        where: { jobId: version.job.id },
-      });
+const ats = calculateATS(content, job.description);
 
-      await prisma.skillGap.createMany({
-        data: gaps.map((g) => ({
-          jobId: version.job.id ,
-          skill: g.skill,
-          priority: g.priority,
-          estimatedTime: g.estimatedTime,
-          reasoning: g.reasoning,
-          difficulty: g.difficulty,
-          learningLink: g.learningLink,
-        })),
-      });
-    }
+const gaps = await generateSkillGaps(job.description, {
+  matchedSkills: ats.matchedKeywords,
+  missingSkills: ats.missingKeywords,
+  matchPercentage: ats.score,
+});
+
+await prisma.skillGap.deleteMany({
+  where: { jobId: job.id },
+});
+
+await prisma.skillGap.createMany({
+  data: gaps.map((g) => ({
+    jobId: job.id,
+    skill: g.skill,
+    priority: g.priority,
+    estimatedTime: g.estimatedTime,
+    reasoning: g.reasoning,
+    difficulty: g.difficulty,
+    learningLink: g.learningLink,
+  })),
+});
   } catch (e) {
     logError("Skill gap failed", e);
   }

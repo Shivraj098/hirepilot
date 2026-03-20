@@ -1,21 +1,32 @@
 "use server";
 
 import { prisma } from "@/lib/db/prisma";
-import { analyzeLinkedin } from "@/server/actions/ai-tools.action";
+import { logActivity } from "../activity/activity.service";
 import { analyzeLinkedinProfile } from "@/server/ai/resume/linkedin-analyzer";
 
-export async function analyzeLinkedinProfile(
-  userId: string,
-  rawText: string
-) {
-  const analysis = await analyzeLinkedin(rawText);
+export async function analyzeLinkedinService(userId: string, input: string) {
+  const analysis = await analyzeLinkedinProfile(input);
 
-  return prisma.linkedinProfile.create({
+  if (!analysis) {
+    throw new Error(
+      "Failed to analyze LinkedIn profile. Please check the URL and try again.",
+    );
+  }
+
+  const saved = await prisma.linkedinProfile.create({
     data: {
       userId,
-      rawText,
+      rawText: input,
       analysis,
       score: analysis?.score ?? null,
     },
   });
+
+  await logActivity({
+    userId,
+    type: "ANALYZE_LINKEDIN",
+    message: "Linkedin profile analyzed",
+  });
+
+  return saved;
 }

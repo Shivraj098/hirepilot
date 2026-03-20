@@ -1,4 +1,4 @@
-import { runAI } from "./orchestrator";
+import { runAI } from "@/server/ai/core/orchestrator";
 import { parseResumeContent } from "../../utils/resume-parser";
 import { calculateATS } from "./ats-engine";
 

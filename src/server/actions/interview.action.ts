@@ -4,18 +4,18 @@ import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-import { generateInterviewPrep } from "@/server/ai/interview-generator";
+import { generateInterviewPrep } from "@/server/ai/interview/interview-generator";
 import { generateAIInterviewPrep } from "@/server/ai/interview/interview-ai";
 import { generateSectionSuggestions } from "@/server/ai/resume/suggestion-engine";
-import { calculateSkillGap } from "@/server/ai/skill-gap";
+import { calculateSkillGap } from "@/server/ai/skills/skill-gap";
 import { tailorResumeWithAI } from "@/server/ai/resume/tailor";
 import { recalculateResumePipeline } from "../orchestrators/resume-orchestrator";
 import type {
   ResumeContent,
-  StructuredResumeContent,
+  
 } from "@/server/types/resume.types";
 
-import type { InterviewPrepResult } from "@/server/ai/interview-generator";
+import type { InterviewPrepResult } from "@/server/ai/interview/interview-generator";
 
 /* =========================================================
    CREATE TAILORED VERSION WITH AI
@@ -58,19 +58,19 @@ export async function createTailoredVersionWithAI(
 
   // ---------- CREATE VERSION ----------
 
-const newVersion = await prisma.resumeVersion.create({
-  data: {
-    resumeId,
-    userId: user.id,
-    jobId,
-    content: tailoredContent,
-    versionType: "TAILORED",
+  const newVersion = await prisma.resumeVersion.create({
+    data: {
+      resumeId,
+      userId: user.id,
+      jobId,
+      content: tailoredContent,
+      versionType: "TAILORED",
 
-    parentId: baseVersion.id,
-    createdBy: "AI",
-    label: `AI Tailored for ${job.title}`,
-  },
-});
+      parentId: baseVersion.id,
+      createdBy: "AI",
+      label: `AI Tailored for ${job.title}`,
+    },
+  });
 
   // ---------- ATS ----------
 
@@ -83,7 +83,7 @@ const newVersion = await prisma.resumeVersion.create({
   // ---------- SUGGESTIONS ----------
 
   const suggestions = await generateSectionSuggestions(
-    tailoredContent,
+    tailoredContent ,
     skillGap,
     job.description,
   );

@@ -1,5 +1,5 @@
-import { extractResumeSkills, extractJobKeywords } from "./extractors";
-import { calculateATS } from "./ats-engine";
+import { extractResumeSkills, extractJobKeywords } from "@/server/ai/resume/extractors";
+import { calculateATS } from "@/server/ai/resume/ats-engine";
 
 function normalize(text: string): string {
   return text

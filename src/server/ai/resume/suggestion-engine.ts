@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { runAI } from "@/server/ai/orchestrator";
+import { runAI } from "@/server/ai/core/orchestrator";
 import { parseResumeContent } from "../../utils/resume-parser";
 import { calculateATS } from "./ats-engine";
 

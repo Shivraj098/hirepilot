@@ -4,14 +4,10 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
-import { analyzeLinkedinProfile } from "@/server/ai/resume/linkedin-analyzer";
 import { analyzePortfolio } from "@/server/ai/resume/portfolio-analyzer";
 
 import { logActivity } from "@/server/features/activity/activity.service";
-
-type LinkedinResult = {
-  score?: number;
-};
+import { analyzeLinkedinService } from "../features/resume/linkedin.service";
 
 type PortfolioResult = {
   score?: number;
@@ -23,28 +19,10 @@ type PortfolioResult = {
 
 export async function analyzeLinkedin(input: string) {
   const user = await getCurrentUser();
+
   if (!user?.id) throw new Error("Unauthorized");
 
-  const text = await urlToText(input);
-
-  const result = (await analyzeLinkedinProfile(text)) as LinkedinResult;
-
-  const saved = await prisma.linkedinProfile.create({
-    data: {
-      userId: user.id,
-      rawText: text,
-      analysis: result as Prisma.InputJsonValue,
-      score: result?.score ?? null,
-    },
-  });
-
-  await logActivity({
-    userId: user.id,
-    type: "LINKEDIN_ANALYZED",
-    message: "LinkedIn profile analyzed",
-  });
-
-  return saved;
+  return analyzeLinkedinService(user.id, input);
 }
 
 /* ================================
