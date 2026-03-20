@@ -1,36 +1,33 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
-import { createResume } from "@/server/actions/resume.actions";
-import { createJob } from "@/server/actions/job.actions";
-import Link from "next/link";
 
-import Card from "@/components/ui/card";
-import Button from "@/components/ui/button";
-import Input from "@/components/ui/input";
+import PageHeader from "@/components/ui/page-header";
+import Section from "@/components/ui/section";
+import StatCard from "@/components/ui/stat-card";
+import Panel from "@/components/ui/panel";
+import EmptyState from "@/components/ui/empty-state";
+
+import Link from "next/link";
 
 export default async function DashboardHome() {
   const user = await getCurrentUser();
 
   if (!user?.id) {
-  return (
-    <Card className="p-6 text-sm text-muted-foreground">
-      Loading dashboard...
-    </Card>
-  );
-}
+    return null;
+  }
 
   const [resumes, jobs, versionCount] = await Promise.all([
     prisma.resume.findMany({
       where: { userId: user.id },
       include: { versions: true },
       orderBy: { createdAt: "desc" },
-      take: 6,
+      take: 5,
     }),
 
     prisma.job.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
-      take: 6,
+      take: 5,
     }),
 
     prisma.resumeVersion.count({
@@ -43,238 +40,166 @@ export default async function DashboardHome() {
   ]);
 
   return (
-    <div className="  space-y-10
-      max-w-6xl
-      mx-auto">
+    <div className="space-y-8">
+
       {/* HEADER */}
-      <div className="space-y-1">
 
-  <h1 className="text-3xl font-semibold tracking-tight">
-    Dashboard
-  </h1>
+      <PageHeader
+        title="Dashboard"
+        description="Overview of resumes, jobs, and AI optimization"
+      />
 
-  <p className="text-sm text-muted-foreground">
-    Manage resumes, jobs, and AI optimization workflow
-  </p>
+      {/* ================= STATS ================= */}
 
-</div>
+      <Section>
 
-      {/* ======================= */}
-      {/* STATS */}
-      {/* ======================= */}
+        <div className="grid gap-4 sm:grid-cols-3">
 
-      <div className="grid gap-4 sm:grid-cols-3 pt-2">
-        <Card className=" p-5
-    space-y-1
-    rounded-2xl
-    border-border/60
-    shadow-sm
-    bg-background">
-          <p className="text-sm text-muted-foreground">Resumes</p>
-          <p className="text-3xl font-semibold">{resumes.length}</p>
-        </Card>
+          <StatCard
+            label="Resumes"
+            value={resumes.length}
+          />
 
-        <Card className=" p-5
-    space-y-1
-    rounded-2xl
-    border-border/60
-    shadow-sm
-    bg-background">
-          <p className="text-sm text-muted-foreground">Jobs</p>
-          <p className="text-3xl font-semibold">{jobs.length}</p>
-        </Card>
+          <StatCard
+            label="Jobs"
+            value={jobs.length}
+          />
 
-        <Card className=" p-5
-    space-y-1
-    rounded-2xl
-    border-border/60
-    shadow-sm
-    bg-background">
-          <p className="text-sm text-muted-foreground">Versions</p>
-          <p className="text-3xl font-semibold">{versionCount}</p>
-        </Card>
-      </div>
+          <StatCard
+            label="Versions"
+            value={versionCount}
+          />
 
-      {/* ======================= */}
-      {/* QUICK ACTIONS */}
-      {/* ======================= */}
-
-      <Card className=" p-6
-    space-y-6
-    rounded-2xl
-    border-border/60
-    shadow-sm
-    bg-background">
-        <div className="space-y-1 max-w-md">
-          <h2 className="text-lg font-semibold">Quick Actions</h2>
-          <p className="text-sm text-muted-foreground">
-            Create new resume or add a job.
-          </p>
         </div>
 
-        <div className="flex flex-wrap gap-4 pt-2">
-          <form
-            action={async (formData) => {
-              "use server";
-              const title = formData.get("title") as string;
-              if (!title) return;
-              await createResume(title);
-            }}
-            className="flex gap-2 items-center"
-          >
-            <Input name="title" placeholder="Resume title" className="w-40"
-             />
-            <Button type="submit" className="min-w-[110px]">New Resume</Button>
-          </form>
+      </Section>
 
-          <form
-            action={async (formData) => {
-              "use server";
+      {/* ================= GRID ================= */}
 
-              await createJob({
-                title: formData.get("title") as string,
-                company: formData.get("company") as string,
-                location: "",
-                jobLink: "",
-                description: "",
-              });
-            }}
-            className="flex gap-2"
-          >
-            <Input name="title" placeholder="Job title" className="w-36" />
+      <Section>
 
-            <Input name="company" placeholder="Company" className="w-36" />
+        <div className="grid gap-6 lg:grid-cols-2">
 
-            <Button type="submit" className="min-w-[110px]">Add Job</Button>
-          </form>
-        </div>
-      </Card>
+          {/* RESUMES PANEL */}
 
-      {/* ======================= */}
-      {/* RESUMES */}
-      {/* ======================= */}
+          <Panel className="space-y-4">
 
-      <div className="space-y-4 pt-2">
-        <h2 className="text-lg font-semibold tracking-tight">Recent Resumes</h2>
+            <h2 className="text-lg font-semibold">
+              Recent Resumes
+            </h2>
 
-        {/* Resume list */}
+            {resumes.length === 0 ? (
+              <EmptyState
+                title="No resumes yet"
+                description="Create a resume to start tailoring"
+              />
+            ) : (
+              <div className="space-y-2">
 
-        {resumes.length === 0 ? (
-          <Card className="  p-6
-    space-y-2
-    rounded-2xl
-    border-border/60
-    shadow-sm
-    bg-background">
+                {resumes.map((resume) => (
+                  <Link
+                    key={resume.id}
+                    href={`/dashboard/${resume.id}`}
+                    className="
+                    block
+                    rounded-xl
+                    border
+                    border-border/60
+                    p-4
+                    hover:bg-muted/40
+                    transition
+                  "
+                  >
+                    <div className="flex justify-between">
 
-  <p className="text-sm font-medium">
-    No resumes yet
-  </p>
+                      <div>
+                        <p className="font-medium">
+                          {resume.title}
+                        </p>
 
-  <p className="text-sm text-muted-foreground">
-    Create a resume to start tailoring for jobs.
-  </p>
+                        <p className="text-xs text-muted-foreground">
+                          {resume.versions.length} versions
+                        </p>
+                      </div>
 
-</Card>
-        ) : (
-          <div className=" p-5
-    space-y-3
-    rounded-2xl
-    border-border/60
-    shadow-sm
-    bg-background
-    transition-all
-    hover:shadow-md
-    hover:-translate-y-[2px]">
-            {resumes.map((resume) => (
-              <Link key={resume.id} href={`/dashboard/${resume.id}`}>
-                <Card className="p-5 space-y-3 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-base">{resume.title}</h3>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(
+                          resume.createdAt
+                        ).toLocaleDateString()}
+                      </span>
 
-                      <p className="text-xs text-muted-foreground pt-1">
-                        Created{" "}
-                        {new Date(resume.createdAt).toLocaleDateString()}
-                      </p>
                     </div>
+                  </Link>
+                ))}
 
-                    <span
-                      className="
-        text-xs
-rounded-full
-border border-border/60
-bg-muted/50
-px-2.5 py-1
-font-medium
-      "
-                    >
-                      {resume.versions.length} versions
-                    </span>
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+              </div>
+            )}
 
-      {/* ======================= */}
-      {/* JOBS */}
-      {/* ======================= */}
+          </Panel>
 
-      <div className="space-y-4 pt-2">
-        <h2 className="text-lg font-semibold tracking-tight">Recent Jobs</h2>
+          {/* JOBS PANEL */}
 
-        {/* Job list */}
+          <Panel className="space-y-4">
 
-        {jobs.length === 0 ? (
-          <Card className="  p-6
-    space-y-2
-    rounded-2xl
-    border-border/60
-    shadow-sm
-    bg-background">
+            <h2 className="text-lg font-semibold">
+              Recent Jobs
+            </h2>
 
-  <p className="text-sm font-medium">
-    No jobs yet
-  </p>
+            {jobs.length === 0 ? (
+              <EmptyState
+                title="No jobs yet"
+                description="Add a job to generate tailored resumes"
+              />
+            ) : (
+              <div className="space-y-2">
 
-  <p className="text-sm text-muted-foreground">
-    Add a job to generate tailored resumes.
-  </p>
+                {jobs.map((job) => (
+                  <Link
+                    key={job.id}
+                    href={`/dashboard/jobs/${job.id}`}
+                    className="
+                    block
+                    rounded-xl
+                    border
+                    border-border/60
+                    p-4
+                    hover:bg-muted/40
+                    transition
+                  "
+                  >
+                    <div className="flex justify-between">
 
-</Card>
-        ) : (
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {jobs.map((job) => (
-              <Link key={job.id} href={`/dashboard/jobs/${job.id}`}>
-                <Card className=" p-5
-    space-y-3
-    rounded-2xl
-    border-border/60
-    shadow-sm
-    bg-background
-    transition-all
-    hover:shadow-md
-    hover:-translate-y-[2px]">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-base">{job.title}</h3>
+                      <div>
 
-                    <p className="text-sm text-muted-foreground pt-1">
-                      {job.company}
-                    </p>
+                        <p className="font-medium">
+                          {job.title}
+                        </p>
 
-                    <p className="text-xs text-muted-foreground">
-                      Created {new Date(job.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+                        <p className="text-xs text-muted-foreground">
+                          {job.company}
+                        </p>
+
+                      </div>
+
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(
+                          job.createdAt
+                        ).toLocaleDateString()}
+                      </span>
+
+                    </div>
+                  </Link>
+                ))}
+
+              </div>
+            )}
+
+          </Panel>
+
+        </div>
+
+      </Section>
+
     </div>
   );
 }
