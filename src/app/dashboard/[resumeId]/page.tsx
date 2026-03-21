@@ -1,3 +1,10 @@
+import Badge from "@/components/ui/badge";
+import Progress from "@/components/ui/progress";
+import PanelHeader from "@/components/ui/panel-header";
+import StatRow from "@/components/ui/stat-row";
+import Timeline from "@/components/ui/timeline";
+import Tag from "@/components/ui/tag";
+
 import PageHeader from "@/components/ui/page-header";
 import Tabs from "@/components/ui/tabs";
 import Panel from "@/components/ui/panel";
@@ -107,7 +114,7 @@ export default async function ResumePage({ params }: Props) {
                 {/* SUMMARY */}
 
                 <Panel>
-                  <h2 className="font-semibold mb-4">Summary</h2>
+                  <PanelHeader title="Summary" />
 
                   <FormWithToast
                     successMessage="Summary updated"
@@ -191,7 +198,7 @@ export default async function ResumePage({ params }: Props) {
                 {/* EDUCATION */}
 
                 <Panel>
-                  <h2 className="font-semibold mb-4">Education</h2>
+                  <PanelHeader title="Education" />
 
                   {education.map((edu, i) => (
                     <div
@@ -250,7 +257,7 @@ export default async function ResumePage({ params }: Props) {
                 {/* EXPERIENCE */}
 
                 <Panel>
-                  <h2 className="font-semibold mb-4">Experience</h2>
+                  <PanelHeader title="Experience" />
 
                   {experience.map((exp, i) => (
                     <div
@@ -319,28 +326,18 @@ export default async function ResumePage({ params }: Props) {
             content: (
               <Section>
                 <Panel>
-                  <h2 className="font-semibold mb-4">Version History</h2>
+                  <PanelHeader title="Version History" />
 
                   {tailoredVersions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No versions yet
-                    </p>
+                    <p>No versions</p>
                   ) : (
-                    <div className="space-y-2">
-                      {tailoredVersions.map((v) => (
-                        <div
-                          key={v.id}
-                          className="
-                        border
-                        border-border
-                        rounded-xl
-                        p-4
-                      "
-                        >
-                          Tailored for {v.job?.title}
-                        </div>
-                      ))}
-                    </div>
+                    <Timeline
+                      items={tailoredVersions.map((v) => ({
+                        id: v.id,
+                        label: `Tailored for ${v.job?.title}`,
+                        time: new Date(v.createdAt).toLocaleString(),
+                      }))}
+                    />
                   )}
                 </Panel>
               </Section>
@@ -404,6 +401,50 @@ export default async function ResumePage({ params }: Props) {
                   "
                     >
                       {j.title}
+                    </div>
+                  ))}
+                </Panel>
+              </Section>
+            ),
+          },
+          {
+            label: "ATS",
+            value: "ats",
+            content: (
+              <Section>
+                <Panel>
+                  <PanelHeader title="ATS Score" />
+
+                  <StatRow label="Score" value="Coming soon" />
+
+                  <Progress value={40} />
+                </Panel>
+
+                <Panel>
+                  <PanelHeader title="Matched Skills" />
+
+                  <div className="flex flex-wrap gap-2">
+                    {skills.map((s, i) => (
+                      <Tag key={i}>{s}</Tag>
+                    ))}
+                  </div>
+                </Panel>
+              </Section>
+            ),
+          },
+          {
+            label: "Skills",
+            value: "skills",
+            content: (
+              <Section>
+                <Panel>
+                  <PanelHeader title="Skills Overview" />
+
+                  {skills.map((s, i) => (
+                    <div key={i} className="flex justify-between mb-2">
+                      <span>{s}</span>
+
+                      <Badge>Skill</Badge>
                     </div>
                   ))}
                 </Panel>
