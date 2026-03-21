@@ -1,21 +1,21 @@
-import { ReactNode } from "react";
-import clsx from "clsx";
+"use client";
+
+import { motion } from "framer-motion";
+import { stagger } from "@/lib/motion";
 
 export default function Section({
   children,
-  className,
 }: {
-  children: ReactNode;
-  className?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <section
-      className={clsx(
-        "space-y-4",
-        className
-      )}
+    <motion.div
+      variants={stagger}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
     >
       {children}
-    </section>
+    </motion.div>
   );
 }

@@ -1,26 +1,26 @@
-import { ReactNode } from "react";
+"use client";
+
+import { motion } from "framer-motion";
+import { scaleIn, panelHover } from "@/lib/motion";
 import clsx from "clsx";
 
 export default function Panel({
   children,
   className,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <div
-      className={clsx(
-        "rounded-2xl border border-border/60",
-        "bg-card text-card-foreground",
-        "shadow-sm",
-        "transition-all duration-200",
-        "hover:shadow-md",
-        "p-6",
-        className
+    <motion.div
+      variants={scaleIn}
+      initial="hidden"
+      animate="show"
+      {...panelHover}
+      className={clsx("rounded-2xl border border-border bg-card p-5 shadow-sm transition",className
       )}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

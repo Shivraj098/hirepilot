@@ -1,33 +1,35 @@
-import clsx from "clsx";
+"use client";
+
+import { motion } from "framer-motion";
+import { scaleIn } from "@/lib/motion";
 
 export default function StatCard({
   label,
   value,
-  className,
 }: {
   label: string;
   value: number | string;
-  className?: string;
 }) {
   return (
-    <div
-      className={clsx(
-        "rounded-2xl border border-border/60",
-        "bg-card",
-        "p-5",
-        "space-y-1",
-        "transition-all duration-200",
-        "hover:shadow-md",
-        className
-      )}
+    <motion.div
+      variants={scaleIn}
+      initial="hidden"
+      animate="show"
+      className="
+      rounded-xl
+      border
+      border-border
+      p-4
+      bg-card
+    "
     >
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {label}
       </p>
 
-      <p className="text-3xl font-semibold">
+      <p className="text-xl font-semibold">
         {value}
       </p>
-    </div>
+    </motion.div>
   );
 }
