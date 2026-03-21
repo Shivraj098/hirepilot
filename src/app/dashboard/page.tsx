@@ -41,7 +41,6 @@ export default async function DashboardHome() {
 
   return (
     <div className="space-y-8">
-
       {/* HEADER */}
 
       <PageHeader
@@ -52,41 +51,23 @@ export default async function DashboardHome() {
       {/* ================= STATS ================= */}
 
       <Section>
-
         <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard label="Resumes" value={resumes.length} />
 
-          <StatCard
-            label="Resumes"
-            value={resumes.length}
-          />
+          <StatCard label="Jobs" value={jobs.length} />
 
-          <StatCard
-            label="Jobs"
-            value={jobs.length}
-          />
-
-          <StatCard
-            label="Versions"
-            value={versionCount}
-          />
-
+          <StatCard label="Versions" value={versionCount} />
         </div>
-
       </Section>
 
       {/* ================= GRID ================= */}
 
       <Section>
-
         <div className="grid gap-6 lg:grid-cols-2">
-
           {/* RESUMES PANEL */}
 
           <Panel className="space-y-4">
-
-            <h2 className="text-lg font-semibold">
-              Recent Resumes
-            </h2>
+            <h2 className="text-lg font-semibold">Recent Resumes</h2>
 
             {resumes.length === 0 ? (
               <EmptyState
@@ -95,7 +76,6 @@ export default async function DashboardHome() {
               />
             ) : (
               <div className="space-y-2">
-
                 {resumes.map((resume) => (
                   <Link
                     key={resume.id}
@@ -111,11 +91,8 @@ export default async function DashboardHome() {
                   "
                   >
                     <div className="flex justify-between">
-
                       <div>
-                        <p className="font-medium">
-                          {resume.title}
-                        </p>
+                        <p className="font-medium">{resume.title}</p>
 
                         <p className="text-xs text-muted-foreground">
                           {resume.versions.length} versions
@@ -123,27 +100,19 @@ export default async function DashboardHome() {
                       </div>
 
                       <span className="text-xs text-muted-foreground">
-                        {new Date(
-                          resume.createdAt
-                        ).toLocaleDateString()}
+                        {new Date(resume.createdAt).toLocaleDateString()}
                       </span>
-
                     </div>
                   </Link>
                 ))}
-
               </div>
             )}
-
           </Panel>
 
           {/* JOBS PANEL */}
 
           <Panel className="space-y-4">
-
-            <h2 className="text-lg font-semibold">
-              Recent Jobs
-            </h2>
+            <h2 className="text-lg font-semibold">Recent Jobs</h2>
 
             {jobs.length === 0 ? (
               <EmptyState
@@ -152,7 +121,6 @@ export default async function DashboardHome() {
               />
             ) : (
               <div className="space-y-2">
-
                 {jobs.map((job) => (
                   <Link
                     key={job.id}
@@ -168,38 +136,25 @@ export default async function DashboardHome() {
                   "
                   >
                     <div className="flex justify-between">
-
                       <div>
-
-                        <p className="font-medium">
-                          {job.title}
-                        </p>
+                        <p className="font-medium">{job.title}</p>
 
                         <p className="text-xs text-muted-foreground">
                           {job.company}
                         </p>
-
                       </div>
 
                       <span className="text-xs text-muted-foreground">
-                        {new Date(
-                          job.createdAt
-                        ).toLocaleDateString()}
+                        {new Date(job.createdAt).toLocaleDateString()}
                       </span>
-
                     </div>
                   </Link>
                 ))}
-
               </div>
             )}
-
           </Panel>
-
         </div>
-
       </Section>
-
     </div>
   );
 }
