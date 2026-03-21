@@ -1,13 +1,14 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
-
+import PanelHeader from "@/components/ui/panel-header";
+import Badge from "@/components/ui/badge";
+import Progress from "@/components/ui/progress";
+import StatRow from "@/components/ui/stat-row";
+import Timeline from "@/components/ui/timeline";
 import PageHeader from "@/components/ui/page-header";
 import Section from "@/components/ui/section";
 import StatCard from "@/components/ui/stat-card";
 import Panel from "@/components/ui/panel";
-import EmptyState from "@/components/ui/empty-state";
-
-import Link from "next/link";
 
 export default async function DashboardHome() {
   const user = await getCurrentUser();
@@ -51,107 +52,105 @@ export default async function DashboardHome() {
       {/* ================= STATS ================= */}
 
       <Section>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <StatCard label="Resumes" value={resumes.length} />
 
           <StatCard label="Jobs" value={jobs.length} />
 
           <StatCard label="Versions" value={versionCount} />
+
+          <StatCard label="AI Runs" value={versionCount} />
         </div>
       </Section>
-
       {/* ================= GRID ================= */}
 
       <Section>
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* RESUMES PANEL */}
+          {/* ACTIVITY */}
 
-          <Panel className="space-y-4">
-            <h2 className="text-lg font-semibold">Recent Resumes</h2>
+          <Panel>
+            <PanelHeader title="Activity" />
+
+            <Timeline
+              items={[
+                {
+                  id: "1",
+                  label: "Resume updated",
+                  time: "Today",
+                },
+                {
+                  id: "2",
+                  label: "Job added",
+                  time: "Yesterday",
+                },
+              ]}
+            />
+          </Panel>
+
+          {/* INSIGHTS */}
+
+          <Panel>
+            <PanelHeader title="Insights" />
+
+            <StatRow label="Total resumes" value={resumes.length} />
+
+            <StatRow label="Total jobs" value={jobs.length} />
+
+            <StatRow label="Versions" value={versionCount} />
+
+            <Progress value={60} />
+          </Panel>
+        </div>
+      </Section>
+
+      <Section>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* RESUMES */}
+
+          <Panel>
+            <PanelHeader title="Recent Resumes" />
 
             {resumes.length === 0 ? (
-              <EmptyState
-                title="No resumes yet"
-                description="Create a resume to start tailoring"
-              />
+              <p>No resumes</p>
             ) : (
-              <div className="space-y-2">
-                {resumes.map((resume) => (
-                  <Link
-                    key={resume.id}
-                    href={`/dashboard/${resume.id}`}
-                    className="
-                    block
-                    rounded-xl
-                    border
-                    border-border/60
-                    p-4
-                    hover:bg-muted/40
-                    transition
-                  "
-                  >
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-medium">{resume.title}</p>
-
-                        <p className="text-xs text-muted-foreground">
-                          {resume.versions.length} versions
-                        </p>
-                      </div>
-
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(resume.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              resumes.map((r) => (
+                <div
+                  key={r.id}
+                  className="
+            border
+            border-border
+            rounded-lg
+            p-3
+            mb-2
+          "
+                >
+                  {r.title}
+                </div>
+              ))
             )}
           </Panel>
 
-          {/* JOBS PANEL */}
+          {/* JOBS */}
 
-          <Panel className="space-y-4">
-            <h2 className="text-lg font-semibold">Recent Jobs</h2>
+          <Panel>
+            <PanelHeader title="Recent Jobs" />
 
-            {jobs.length === 0 ? (
-              <EmptyState
-                title="No jobs yet"
-                description="Add a job to generate tailored resumes"
-              />
-            ) : (
-              <div className="space-y-2">
-                {jobs.map((job) => (
-                  <Link
-                    key={job.id}
-                    href={`/dashboard/jobs/${job.id}`}
-                    className="
-                    block
-                    rounded-xl
-                    border
-                    border-border/60
-                    p-4
-                    hover:bg-muted/40
-                    transition
-                  "
-                  >
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-medium">{job.title}</p>
+            {jobs.map((j) => (
+              <div
+                key={j.id}
+                className="
+          border
+          border-border
+          rounded-lg
+          p-3
+          mb-2
+        "
+              >
+                {j.title}
 
-                        <p className="text-xs text-muted-foreground">
-                          {job.company}
-                        </p>
-                      </div>
-
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(job.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
+                <Badge>Job</Badge>
               </div>
-            )}
+            ))}
           </Panel>
         </div>
       </Section>
