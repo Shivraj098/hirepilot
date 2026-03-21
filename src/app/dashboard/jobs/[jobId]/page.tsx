@@ -11,6 +11,11 @@ import { applySuggestion } from "@/server/actions/suggestion.actions";
 import { regenerateInterviewPrep } from "@/server/actions/interview.action";
 import Card from "@/components/ui/card";
 import Button from "@/components/ui/button";
+import StatRow from "@/components/ui/stat-row";
+import PanelHeader from "@/components/ui/panel-header";
+import Progress from "@/components/ui/progress";
+import { Tag } from "lucide-react";
+import Badge from "@/components/ui/badge";
 
 interface Props {
   params: Promise<{
@@ -99,9 +104,16 @@ export default async function JobDetailPage({ params }: Props) {
                   <Panel>
                     <h2 className="font-semibold mb-4">Match Score</h2>
 
-                    <p className="text-lg font-medium">
-                      {skillGap.matchPercentage}%
-                    </p>
+                    <Panel>
+                      <PanelHeader title="Match Score" />
+
+                      <StatRow
+                        label="Score"
+                        value={`${skillGap.matchPercentage}%`}
+                      />
+
+                      <Progress value={skillGap.matchPercentage} />
+                    </Panel>
                   </Panel>
                 )}
               </Section>
@@ -116,26 +128,26 @@ export default async function JobDetailPage({ params }: Props) {
             content: (
               <Section>
                 {skillGap && (
-                  <Panel>
-                    <h2 className="font-semibold mb-4">Missing Skills</h2>
+                  <>
+                    <Panel>
+                      <PanelHeader title="Missing Skills" />
 
-                    <div className="flex flex-wrap gap-2">
-                      {skillGap.missingSkills.map((s: string) => (
-                        <span
-                          key={s}
-                          className="
-                        px-2 py-1
-                        border
-                        border-border
-                        rounded-full
-                        text-sm
-                      "
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </Panel>
+                      <div className="flex flex-wrap gap-2">
+                        {skillGap.missingSkills.map((s: string) => (
+                          <Tag key={s}>{s}</Tag>
+                        ))}
+                      </div>
+                    </Panel>
+                    <Panel>
+                      <PanelHeader title="Matched Skills" />
+
+                      <div className="flex flex-wrap gap-2">
+                        {skillGap.matchedSkills.map((s: string) => (
+                          <Tag key={s}>{s}</Tag>
+                        ))}
+                      </div>
+                    </Panel>
+                  </>
                 )}
               </Section>
             ),
@@ -150,7 +162,11 @@ export default async function JobDetailPage({ params }: Props) {
               <Section>
                 {job.skillGaps.map((gap) => (
                   <Panel key={gap.id}>
-                    <p className="font-medium">{gap.skill}</p>
+                    <PanelHeader title={gap.skill} />
+
+                    <Badge>{gap.priority}</Badge>
+
+                    <StatRow label="Estimated time" value={gap.estimatedTime} />
 
                     <p className="text-sm text-muted-foreground">
                       {gap.reasoning}
@@ -168,11 +184,23 @@ export default async function JobDetailPage({ params }: Props) {
             value: "versions",
             content: (
               <Section>
-                {job.versions.map((v) => (
-                  <Panel key={v.id}>
-                    <p>{v.resume.title}</p>
-                  </Panel>
-                ))}
+                {job.versions.map((v) => {
+                  const ats = v.aTSResults?.[0];
+
+                  return (
+                    <Panel key={v.id}>
+                      <PanelHeader title={v.resume.title} />
+
+                      {ats && (
+                        <>
+                          <StatRow label="ATS" value={`${ats.score}%`} />
+
+                          <Progress value={ats.score} />
+                        </>
+                      )}
+                    </Panel>
+                  );
+                })}
               </Section>
             ),
           },

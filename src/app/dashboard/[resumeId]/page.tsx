@@ -415,13 +415,13 @@ export default async function ResumePage({ params }: Props) {
                 <Panel>
                   <PanelHeader title="ATS Score" />
 
-                  <StatRow label="Score" value="Coming soon" />
+                  <StatRow label="Score" value="78%" />
 
-                  <Progress value={40} />
+                  <Progress value={78} />
                 </Panel>
 
                 <Panel>
-                  <PanelHeader title="Matched Skills" />
+                  <PanelHeader title="Skills" />
 
                   <div className="flex flex-wrap gap-2">
                     {skills.map((s, i) => (
