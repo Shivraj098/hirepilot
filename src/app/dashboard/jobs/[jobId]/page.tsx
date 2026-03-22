@@ -2,15 +2,10 @@ import PageHeader from "@/components/ui/page-header";
 import Tabs from "@/components/ui/tabs";
 import Panel from "@/components/ui/panel";
 import Section from "@/components/ui/section";
-import Divider from "@/components/ui/divider";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { calculateSkillGap } from "@/server/ai/skills/skill-gap";
-import { applySuggestion } from "@/server/actions/suggestion.actions";
-import { regenerateInterviewPrep } from "@/server/actions/interview.action";
-import Card from "@/components/ui/card";
-import Button from "@/components/ui/button";
 import StatRow from "@/components/ui/stat-row";
 import PanelHeader from "@/components/ui/panel-header";
 import Progress from "@/components/ui/progress";
@@ -182,26 +177,44 @@ export default async function JobDetailPage({ params }: Props) {
           {
             label: "Versions",
             value: "versions",
-            content: (
-              <Section>
-                {job.versions.map((v) => {
-                  const ats = v.aTSResults?.[0];
+            content: (<Section>
 
-                  return (
-                    <Panel key={v.id}>
-                      <PanelHeader title={v.resume.title} />
+  {job.versions.map(v => {
 
-                      {ats && (
-                        <>
-                          <StatRow label="ATS" value={`${ats.score}%`} />
+    const ats = v.aTSResults?.[0];
 
-                          <Progress value={ats.score} />
-                        </>
-                      )}
-                    </Panel>
-                  );
-                })}
-              </Section>
+    return (
+
+      <Panel key={v.id}>
+
+        <PanelHeader
+          title={v.resume.title}
+        />
+
+        {ats && (
+
+          <>
+            <StatRow
+              label="ATS"
+              value={`${ats.score}%`}
+            />
+
+            <Progress value={ats.score} />
+          </>
+
+        )}
+
+        <Badge>
+          Version
+        </Badge>
+
+      </Panel>
+
+    );
+
+  })}
+
+</Section>
             ),
           },
 
@@ -210,14 +223,41 @@ export default async function JobDetailPage({ params }: Props) {
           {
             label: "Interview",
             value: "interview",
-            content: (
-              <Section>
-                {job.interviewPreps.map((prep) => (
-                  <Panel key={prep.id}>
-                    <p className="font-medium">Interview Prep</p>
-                  </Panel>
-                ))}
-              </Section>
+            content: (<Section>
+
+  {job.interviewPreps.map(prep => (
+
+    <Panel key={prep.id}>
+
+      <PanelHeader title="Interview Prep" />
+
+      <StatRow
+        label="Questions"
+        value={
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (prep.questions as any[])
+            .length
+        }
+      />
+
+      <StatRow
+        label="Topics"
+        value={
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (prep.technicalTopics as any[])
+            .length
+        }
+      />
+
+      <Badge>
+        AI Generated
+      </Badge>
+
+    </Panel>
+
+  ))}
+
+</Section>
             ),
           },
 
@@ -226,16 +266,37 @@ export default async function JobDetailPage({ params }: Props) {
           {
             label: "Suggestions",
             value: "suggestions",
-            content: (
-              <Section>
-                {job.versions.map((v) =>
-                  v.suggestions?.map((s) => (
-                    <Panel key={s.id}>
-                      <p>{s.section}</p>
-                    </Panel>
-                  )),
-                )}
-              </Section>
+            content: (<Section>
+
+  {job.versions.map(v =>
+
+    v.suggestions?.map(s => (
+
+      <Panel key={s.id}>
+
+        <PanelHeader
+          title={s.section}
+        />
+
+        <pre className="text-xs">
+          {JSON.stringify(
+            s.suggestedContent,
+            null,
+            2
+          )}
+        </pre>
+
+        <Badge>
+          Suggestion
+        </Badge>
+
+      </Panel>
+
+    ))
+
+  )}
+
+</Section>
             ),
           },
         ]}

@@ -40,8 +40,9 @@ export default function Tabs({
             className={clsx(
               "px-3 py-2 text-sm transition",
               "border-b-2",
+              "font-medium",
               active === tab.value
-                ? "border-foreground"
+                ? "border-foreground text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >

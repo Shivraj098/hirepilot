@@ -69,24 +69,34 @@ export default async function DashboardHome() {
           {/* ACTIVITY */}
 
           <Panel>
-            <PanelHeader title="Activity" />
 
-            <Timeline
-              items={[
-                {
-                  id: "1",
-                  label: "Resume updated",
-                  time: "Today",
-                },
-                {
-                  id: "2",
-                  label: "Job added",
-                  time: "Yesterday",
-                },
-              ]}
-            />
-          </Panel>
+  <PanelHeader title="Activity" />
 
+  <Timeline
+    items={[
+
+      {
+        id: "1",
+        label: "Resume updated",
+        time: "Today",
+      },
+
+      {
+        id: "2",
+        label: "Job added",
+        time: "Yesterday",
+      },
+
+      {
+        id: "3",
+        label: "Version created",
+        time: "Recently",
+      },
+
+    ]}
+  />
+
+</Panel>
           {/* INSIGHTS */}
 
           <Panel>

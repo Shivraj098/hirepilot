@@ -17,7 +17,7 @@ export default function Badge({
   return (
     <span
       className={clsx(
-        "px-2 py-1 text-xs rounded-full border",
+        "px-2 py-0.5 text-xs rounded-md border",
         styles[variant]
       )}
     >

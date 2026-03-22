@@ -18,9 +18,12 @@ export default function StatCard({
       className="
       rounded-xl
       border
-      border-border
-      p-4
+      border-border/70
       bg-card
+      p-4
+      shadow-sm
+      hover:shadow-md
+      transition
     "
     >
       <p className="text-xs text-muted-foreground">

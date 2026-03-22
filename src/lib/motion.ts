@@ -73,3 +73,9 @@ export const pageEnter: Variants = {
     },
   },
 };
+export const hoverLift = {
+  whileHover: {
+    y: -2,
+    scale: 1.01,
+  },
+};

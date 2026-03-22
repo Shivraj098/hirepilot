@@ -1,7 +1,6 @@
 "use client";
-
 import { motion } from "framer-motion";
-import { scaleIn, panelHover } from "@/lib/motion";
+import { scaleIn, hoverLift } from "@/lib/motion";
 import clsx from "clsx";
 
 export default function Panel({
@@ -16,9 +15,20 @@ export default function Panel({
       variants={scaleIn}
       initial="hidden"
       animate="show"
-      {...panelHover}
-      className={clsx("rounded-2xl border border-border bg-card p-5 shadow-sm transition",className
-      )}
+      {...hoverLift}
+      className={clsx(
+  `
+  rounded-2xl
+  border
+  border-border/70
+  bg-card
+  p-6
+  shadow-sm
+  transition
+  hover:shadow-md
+  `,
+  className
+)}
     >
       {children}
     </motion.div>

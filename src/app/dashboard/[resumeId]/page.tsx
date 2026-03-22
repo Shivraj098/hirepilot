@@ -323,25 +323,35 @@ export default async function ResumePage({ params }: Props) {
           {
             label: "Versions",
             value: "versions",
-            content: (
-              <Section>
-                <Panel>
-                  <PanelHeader title="Version History" />
+             content: (
 
-                  {tailoredVersions.length === 0 ? (
-                    <p>No versions</p>
-                  ) : (
-                    <Timeline
-                      items={tailoredVersions.map((v) => ({
-                        id: v.id,
-                        label: `Tailored for ${v.job?.title}`,
-                        time: new Date(v.createdAt).toLocaleString(),
-                      }))}
-                    />
-                  )}
-                </Panel>
-              </Section>
-            ),
+  <Section>
+
+    <Panel>
+
+      <PanelHeader title="Version History" />
+
+      {tailoredVersions.length === 0 ? (
+        <p>No versions</p>
+      ) : (
+
+        <Timeline
+          items={tailoredVersions.map(v => ({
+            id: v.id,
+            label: `Tailored for ${v.job?.title}`,
+            time: new Date(
+              v.createdAt
+            ).toLocaleString(),
+          }))}
+        />
+
+      )}
+
+    </Panel>
+
+  </Section>
+
+),
           },
 
           {

@@ -4,7 +4,7 @@ export default function Timeline({
   items: { id: string; label: string; time?: string }[];
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 text-sm">
 
       {items.map((item) => (
 

@@ -14,7 +14,7 @@ export default function Progress({
         initial={{ width: 0 }}
         animate={{ width: `${value}%` }}
         transition={{ duration: 0.4 }}
-        className="h-full bg-primary"
+        className="h-full bg-primary/90"
       />
 
     </div>

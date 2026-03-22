@@ -16,7 +16,7 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center h-10 px-4 rounded-xl text-sm font-medium " +
+    "inline-flex items-center justify-center h-10 px-4 rounded-xl text-sm font-medium shadow-sm " +
     "transition-all duration-200 " +
     "focus:outline-none focus:ring-2 focus:ring-ring/40 " +
     "disabled:opacity-50 disabled:pointer-events-none";

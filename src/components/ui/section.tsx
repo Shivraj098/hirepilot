@@ -13,7 +13,7 @@ export default function Section({
       variants={stagger}
       initial="hidden"
       animate="show"
-      className="space-y-6"
+      className="space-y-8"
     >
       {children}
     </motion.div>
