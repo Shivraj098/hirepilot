@@ -1,6 +1,6 @@
 import { runAI } from "@/server/ai/core/orchestrator";
 
-export type ResumeIntelligence = {
+ type ResumeIntelligence = {
   profileScore: number;
 
   careerLevel: string;

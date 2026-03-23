@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
-import { Prisma } from "@prisma/client";
+import { VersionType, CreatedBy, Prisma } from "@prisma/client";
 
 export async function applySuggestionAndCreateVersion(params: {
   suggestionId: string;
@@ -17,7 +17,6 @@ export async function applySuggestionAndCreateVersion(params: {
   }
 
   const base = suggestion.resumeVersion;
-
   const content = (base.content ?? {}) as Record<string, unknown>;
 
   const updatedContent = {
@@ -25,25 +24,24 @@ export async function applySuggestionAndCreateVersion(params: {
     [suggestion.section]: suggestion.suggestedContent,
   };
 
-  const newVersion = await prisma.resumeVersion.create({
-    data: {
-      resumeId: base.resumeId,
-      userId: params.userId,
-      jobId: base.jobId,
-      content: updatedContent as Prisma.InputJsonValue,
-
-      parentId: base.id,
-      versionType: base.versionType,
-
-      createdBy: "USER",
-      label: "After suggestion",
-    },
-  });
-
-  await prisma.aISuggestion.update({
-    where: { id: params.suggestionId },
-    data: { applied: true },
-  });
+  const [newVersion] = await prisma.$transaction([
+    prisma.resumeVersion.create({
+      data: {
+        resumeId: base.resumeId,
+        userId: params.userId,
+        jobId: base.jobId,
+        content: updatedContent as Prisma.InputJsonValue,
+        parentId: base.id,
+        versionType: base.versionType as VersionType,
+        createdBy: CreatedBy.USER,
+        label: "After suggestion applied",
+      },
+    }),
+    prisma.aISuggestion.update({
+      where: { id: params.suggestionId },
+      data: { applied: true },
+    }),
+  ]);
 
   return newVersion;
 }

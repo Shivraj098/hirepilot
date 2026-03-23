@@ -1,42 +1,71 @@
-"use server";
-
 import { prisma } from "@/lib/db/prisma";
+import { JobStatus } from "@prisma/client";
 
 export async function createApplication(data: {
   userId: string;
   jobId: string;
   resumeVersionId: string;
 }) {
-  return prisma.jobApplication.create({
-    data: {
+  const existing = await prisma.jobApplication.findFirst({
+    where: {
       userId: data.userId,
       jobId: data.jobId,
-      resumeVersionId: data.resumeVersionId,
-      status: "SAVED",
+    },
+  });
+
+  if (existing) return existing;
+
+  return prisma.jobApplication.create({
+    data: {
+      ...data,
+      status: JobStatus.APPLIED,
     },
   });
 }
 
 export async function updateApplicationStatus(data: {
   applicationId: string;
-  status: string;
+  userId: string;
+  status: JobStatus;
 }) {
-  return prisma.jobApplication.update({
+  const app = await prisma.jobApplication.findFirst({
     where: {
       id: data.applicationId,
+      userId: data.userId,
     },
-    data: {
-      status: data.status,
-    },
+  });
+
+  if (!app) throw new Error("Application not found");
+
+  return prisma.jobApplication.update({
+    where: { id: data.applicationId },
+    data: { status: data.status },
   });
 }
 
 export async function getUserApplications(userId: string) {
   return prisma.jobApplication.findMany({
     where: { userId },
-    include: {
-      job: true,
-      resumeVersion: true,
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      job: {
+        select: {
+          id: true,
+          title: true,
+          company: true,
+          status: true,
+        },
+      },
+      resumeVersion: {
+        select: {
+          id: true,
+          label: true,
+          versionType: true,
+        },
+      },
     },
+    orderBy: { createdAt: "desc" },
   });
 }

@@ -1,49 +1,99 @@
 "use server";
-import { recalculateResumePipeline } from "../orchestrators/resume-orchestrator";
+import type { ResumeIntelligence } from "../types/ai.types";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
+import { Prisma, VersionType, CreatedBy } from "@prisma/client";
 import { analyzeJob } from "@/server/ai/job/job-intelligence";
 import { analyzeJobMatch } from "@/server/ai/job/job-match";
 import { calculateResumeScore } from "../ai/resume/resume-score";
 import {
   saveJobAnalysis,
   saveMatchResult,
-} from "@/server/features/analysis/analysis.service";
-import {
   saveResumeAnalysis,
   saveScoreHistory,
 } from "@/server/features/analysis/analysis.service";
 import { logActivity } from "@/server/features/activity/activity.service";
 import { saveTailorResult } from "../features/tailor/tailor.service";
-type ExperienceItem = {
-  company: string;
-  role: string;
-  duration: string;
-  description: string;
-};
+import { analyzeResumeProfile } from "../ai/resume/resume-intelligence";
+import { getLatestVersion } from "../features/version/version.service";
+import { recalculateResumePipeline } from "../orchestrators/resume-orchestrator";
+import { assertResumeOwner } from "../auth/permissions";
+import {
+  ResumeContent,
+  ExperienceItem,
+  EducationItem,
+} from "@/server/types/resume.types";
+import { z } from "zod";
 
-type ResumeContent = {
-  summary?: string;
-  experience?: ExperienceItem[];
-  skills?: string[];
-  education?: {
-    institution: string;
-    degree: string;
-    duration: string;
-  }[];
-};
 
-// ===== Resume CRUD =====
+// ==============================
+// VALIDATORS
+// ==============================
+
+const summarySchema = z.string().max(2000);
+const skillSchema = z.string().min(1).max(100);
+const experienceSchema = z.object({
+  company: z.string().min(1).max(200),
+  role: z.string().min(1).max(200),
+  duration: z.string().min(1).max(100),
+  description: z.string().max(2000),
+});
+const educationSchema = z.object({
+  institution: z.string().min(1).max(200),
+  degree: z.string().min(1).max(200),
+  duration: z.string().min(1).max(100),
+});
+
+// ==============================
+// SHARED HELPERS
+// ==============================
+
+async function getAuthAndVersion(resumeId: string) {
+  const user = await getCurrentUser();
+  if (!user?.id) throw new Error("Unauthorized");
+
+  await assertResumeOwner(resumeId, user.id);
+
+  const baseVersion = await getLatestVersion(resumeId, user.id);
+  if (!baseVersion) throw new Error("Base version not found");
+
+  const content = (baseVersion.content ?? {}) as ResumeContent;
+  return { user, baseVersion, content };
+}
+
+async function createNewVersion(
+  resumeId: string,
+  userId: string,
+  parentId: string,
+  content: ResumeContent,
+) {
+  return prisma.resumeVersion.create({
+    data: {
+      resumeId,
+      userId,
+      content: content as Prisma.InputJsonValue,
+      parentId,
+      versionType: VersionType.BASE,
+      createdBy: CreatedBy.USER,
+    },
+  });
+}
+
+// ==============================
+// RESUME CRUD
+// ==============================
 
 export async function createResume(title: string) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
 
+  const parsed = z.string().min(1).max(200).safeParse(title);
+  if (!parsed.success) throw new Error("Invalid title");
+
   const resume = await prisma.resume.create({
     data: {
-      title,
+      title: parsed.data,
       userId: user.id,
       versions: {
         create: {
@@ -54,7 +104,8 @@ export async function createResume(title: string) {
             skills: [],
             education: [],
           } as Prisma.InputJsonValue,
-          versionType: "BASE",
+          versionType: VersionType.BASE,
+          createdBy: CreatedBy.USER,
         },
       },
     },
@@ -71,263 +122,132 @@ export async function createResume(title: string) {
 }
 
 export async function updateResumeSummary(resumeId: string, summary: string) {
-  const user = await getCurrentUser();
+  const parsed = summarySchema.safeParse(summary);
+  if (!parsed.success) throw new Error("Invalid summary");
 
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
+  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
 
-  const baseVersion = await getLatestVersion(resumeId, user.id);
-
-  if (!baseVersion) {
-    throw new Error("Base version not found");
-  }
-
-  const content = (baseVersion.content ?? {}) as ResumeContent;
-
-  const updatedContent = {
+  await createNewVersion(resumeId, user.id, baseVersion.id, {
     ...content,
-    summary,
-  };
-
-  await prisma.resumeVersion.create({
-    data: {
-      resumeId,
-      userId: user.id,
-      content: updatedContent,
-      parentId: baseVersion.id,
-      versionType: "BASE",
-      createdBy: "USER",
-    },
+    summary: parsed.data,
   });
 
-  revalidatePath(`/dashboard/${resumeId}`);
+  revalidatePath(`/dashboard/resumes/${resumeId}`);
 }
 
 export async function addExperience(
   resumeId: string,
   experienceItem: ExperienceItem,
 ) {
-  const user = await getCurrentUser();
+  const parsed = experienceSchema.safeParse(experienceItem);
+  if (!parsed.success) throw new Error("Invalid experience data");
 
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
+  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
 
-  const baseVersion = await getLatestVersion(resumeId, user.id);
-
-  if (!baseVersion) {
-    throw new Error("Base version not found");
-  }
-
-  const content = (baseVersion.content ?? {}) as ResumeContent;
-
-  const updatedContent = {
+  await createNewVersion(resumeId, user.id, baseVersion.id, {
     ...content,
     experience: [
       ...(Array.isArray(content.experience) ? content.experience : []),
-      experienceItem,
+      parsed.data,
     ],
-  };
-
-  await prisma.resumeVersion.create({
-    data: {
-      resumeId,
-      userId: user.id,
-      content: updatedContent,
-      parentId: baseVersion.id,
-      versionType: "BASE",
-      createdBy: "USER",
-    },
   });
 
-  revalidatePath(`/dashboard/${resumeId}`);
+  revalidatePath(`/dashboard/resumes/${resumeId}`);
 }
 
 export async function removeExperience(resumeId: string, index: number) {
-  const user = await getCurrentUser();
-
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
-
-  const baseVersion = await getLatestVersion(resumeId, user.id);
-
-  if (!baseVersion) {
-    throw new Error("Base version not found");
-  }
-
-  const content = (baseVersion.content ?? {}) as ResumeContent;
+  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
 
   const currentExperience = Array.isArray(content.experience)
     ? content.experience
     : [];
 
-  const updatedExperience = currentExperience.filter((_item, i) => i !== index);
+  if (index < 0 || index >= currentExperience.length) {
+    throw new Error("Invalid index");
+  }
 
-  const updatedContent = {
+  await createNewVersion(resumeId, user.id, baseVersion.id, {
     ...content,
-    experience: updatedExperience,
-  };
-
-  await prisma.resumeVersion.create({
-    data: {
-      resumeId,
-      userId: user.id,
-      content: updatedContent,
-      parentId: baseVersion.id,
-      versionType: "BASE",
-      createdBy: "USER",
-    },
+    experience: currentExperience.filter((_, i) => i !== index),
   });
 
-  revalidatePath(`/dashboard/${resumeId}`);
+  revalidatePath(`/dashboard/resumes/${resumeId}`);
 }
 
 export async function addSkill(resumeId: string, skill: string) {
-  const user = await getCurrentUser();
+  const parsed = skillSchema.safeParse(skill);
+  if (!parsed.success) throw new Error("Invalid skill");
 
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
-
-  const baseVersion = await getLatestVersion(resumeId, user.id);
-
-  if (!baseVersion) {
-    throw new Error("Base version not found");
-  }
-
-  const content = (baseVersion.content ?? {}) as ResumeContent;
-
-  const updatedContent = {
-    ...content,
-    skills: [...(Array.isArray(content.skills) ? content.skills : []), skill],
-  };
-
-  await prisma.resumeVersion.create({
-    data: {
-      resumeId,
-      userId: user.id,
-      content: updatedContent,
-      parentId: baseVersion.id,
-      versionType: "BASE",
-      createdBy: "USER",
-    },
-  });
-
-  revalidatePath(`/dashboard/${resumeId}`);
-}
-
-export async function removeSkill(resumeId: string, index: number) {
-  const user = await getCurrentUser();
-
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
-
-  const baseVersion = await getLatestVersion(resumeId, user.id);
-
-  if (!baseVersion) {
-    throw new Error("Base version not found");
-  }
-
-  const content = (baseVersion.content ?? {}) as ResumeContent;
+  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
 
   const currentSkills = Array.isArray(content.skills) ? content.skills : [];
 
-  const updatedSkills = currentSkills.filter((_skill, i) => i !== index);
+  if (currentSkills.includes(parsed.data)) {
+    throw new Error("Skill already exists");
+  }
 
-  const updatedContent = {
+  await createNewVersion(resumeId, user.id, baseVersion.id, {
     ...content,
-    skills: updatedSkills,
-  };
-
-  await prisma.resumeVersion.create({
-    data: {
-      resumeId,
-      userId: user.id,
-      content: updatedContent,
-      parentId: baseVersion.id,
-      versionType: "BASE",
-      createdBy: "USER",
-    },
+    skills: [...currentSkills, parsed.data],
   });
 
-  revalidatePath(`/dashboard/${resumeId}`);
+  revalidatePath(`/dashboard/resumes/${resumeId}`);
+}
+
+export async function removeSkill(resumeId: string, index: number) {
+  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
+
+  const currentSkills = Array.isArray(content.skills) ? content.skills : [];
+
+  if (index < 0 || index >= currentSkills.length) {
+    throw new Error("Invalid index");
+  }
+
+  await createNewVersion(resumeId, user.id, baseVersion.id, {
+    ...content,
+    skills: currentSkills.filter((_, i) => i !== index),
+  });
+
+  revalidatePath(`/dashboard/resumes/${resumeId}`);
 }
 
 export async function addEducation(
   resumeId: string,
-  educationItem: {
-    institution: string;
-    degree: string;
-    duration: string;
-  },
+  educationItem: EducationItem,
 ) {
-  const user = await getCurrentUser();
-  if (!user?.id) throw new Error("Unauthorized");
+  const parsed = educationSchema.safeParse(educationItem);
+  if (!parsed.success) throw new Error("Invalid education data");
 
-  const baseVersion = await getLatestVersion(resumeId, user.id);
+  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
 
-  if (!baseVersion) throw new Error("Base version not found");
-
-  const content = (baseVersion.content ?? {}) as ResumeContent;
-
-  const updatedContent = {
+  await createNewVersion(resumeId, user.id, baseVersion.id, {
     ...content,
     education: [
       ...(Array.isArray(content.education) ? content.education : []),
-      educationItem,
+      parsed.data,
     ],
-  };
-
-  await prisma.resumeVersion.create({
-    data: {
-      resumeId,
-      userId: user.id,
-      content: updatedContent,
-      parentId: baseVersion.id,
-      versionType: "BASE",
-      createdBy: "USER",
-    },
   });
 
-  revalidatePath(`/dashboard/${resumeId}`);
+  revalidatePath(`/dashboard/resumes/${resumeId}`);
 }
 
 export async function removeEducation(resumeId: string, index: number) {
-  const user = await getCurrentUser();
-  if (!user?.id) throw new Error("Unauthorized");
-
-  const baseVersion = await getLatestVersion(resumeId, user.id);
-
-  if (!baseVersion) throw new Error("Base version not found");
-
-  const content = (baseVersion.content ?? {}) as ResumeContent;
+  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
 
   const currentEducation = Array.isArray(content.education)
     ? content.education
     : [];
 
-  const updatedEducation = currentEducation.filter((_item, i) => i !== index);
+  if (index < 0 || index >= currentEducation.length) {
+    throw new Error("Invalid index");
+  }
 
-  const updatedContent = {
+  await createNewVersion(resumeId, user.id, baseVersion.id, {
     ...content,
-    education: updatedEducation,
-  };
-
-  await prisma.resumeVersion.create({
-    data: {
-      resumeId,
-      userId: user.id,
-      content: updatedContent,
-      parentId: baseVersion.id,
-      versionType: "BASE",
-      createdBy: "USER",
-    },
+    education: currentEducation.filter((_, i) => i !== index),
   });
 
-  revalidatePath(`/dashboard/${resumeId}`);
+  revalidatePath(`/dashboard/resumes/${resumeId}`);
 }
 
 export async function createTailoredVersionForJob(
@@ -335,46 +255,30 @@ export async function createTailoredVersionForJob(
   jobId: string,
 ) {
   const user = await getCurrentUser();
+  if (!user?.id) throw new Error("Unauthorized");
 
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await assertResumeOwner(resumeId, user.id);
 
-  // Verify job belongs to user
-  const job = await prisma.job.findFirst({
-    where: {
-      id: jobId,
-      userId: user.id,
-    },
-  });
+  const [job, baseVersion] = await Promise.all([
+    prisma.job.findFirst({
+      where: { id: jobId, userId: user.id },
+    }),
+    getLatestVersion(resumeId, user.id),
+  ]);
 
-  if (!job) {
-    throw new Error("Job not found");
-  }
-
-  const baseVersion = await getLatestVersion(resumeId, user.id);
-
-  if (!baseVersion) {
-    throw new Error("Base version not found");
-  }
+  if (!job) throw new Error("Job not found");
+  if (!baseVersion) throw new Error("Base version not found");
 
   const tailoredVersion = await prisma.resumeVersion.create({
     data: {
       resumeId,
       userId: user.id,
       jobId: job.id,
-
-      content: (baseVersion.content ?? {}) as Prisma.InputJsonValue,
-
-      versionType: "TAILORED",
-
+      content: baseVersion.content as Prisma.InputJsonValue,
+      versionType: VersionType.TAILORED,
       parentId: baseVersion.id,
-
       label: `Tailored for ${job.title}`,
-
-      createdBy: "AI",
-
-      scoreSnapshot: null,
+      createdBy: CreatedBy.AI,
     },
   });
 
@@ -389,45 +293,42 @@ export async function createTailoredVersionForJob(
 
   logActivity({
     userId: user.id,
-
     type: "RESUME_TAILORED",
     message: `Tailored resume for ${job.title}`,
   });
 
-  revalidatePath(`/dashboard/${resumeId}`);
+  revalidatePath(`/dashboard/resumes/${resumeId}`);
   revalidatePath("/dashboard");
 
   return tailoredVersion;
 }
 
-import { analyzeResumeProfile } from "../ai/resume/resume-intelligence";
-import { getLatestVersion } from "../features/version/version.service";
+// ==============================
+// AI ACTIONS
+// ==============================
 
 export async function analyzeResume(resumeId: string) {
   const user = await getCurrentUser();
+  if (!user?.id) throw new Error("Unauthorized");
 
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await assertResumeOwner(resumeId, user.id);
 
   const baseVersion = await getLatestVersion(resumeId, user.id);
+  if (!baseVersion) throw new Error("Base version not found");
 
-  if (!baseVersion) {
-    throw new Error("Base version not found");
-  }
-
-  const result = await analyzeResumeProfile(baseVersion.content);
+  const result  = await analyzeResumeProfile(baseVersion.content);
 
   if (result) {
     await saveResumeAnalysis({
       resumeVersionId: baseVersion.id,
       userId: user.id,
-
       profileScore: result.profileScore,
-
-      strengths: result.strengths,
-      weaknesses: result.weaknesses,
-      recommendedSkills: result.recommendedSkills,
+      atsScore: result.atsScore,
+      strengths: result.strengths as unknown as Prisma.InputJsonValue,
+      weaknesses: result.weaknesses as unknown as Prisma.InputJsonValue,
+      recommendedSkills:
+        result.missingSkills as unknown as Prisma.InputJsonValue,
+      summary: result.summaryFeedback,
     });
   }
 
@@ -442,23 +343,16 @@ export async function analyzeResume(resumeId: string) {
 
 export async function analyzeJobForUser(jobId: string) {
   const user = await getCurrentUser();
-
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
+  if (!user?.id) throw new Error("Unauthorized");
 
   const job = await prisma.job.findFirst({
-    where: {
-      id: jobId,
-      userId: user.id,
-    },
+    where: { id: jobId, userId: user.id },
   });
 
-  if (!job) {
-    throw new Error("Job not found");
-  }
+  if (!job) throw new Error("Job not found");
 
-  const result = await analyzeJob(job.description);
+  const [result] = await Promise.all([analyzeJob(job.description)]);
+
   if (result) {
     await saveJobAnalysis({
       jobId: job.id,
@@ -467,14 +361,16 @@ export async function analyzeJobForUser(jobId: string) {
       requiredLevel: result.requiredLevel,
       difficulty: result.difficulty,
       domain: result.domain,
-      importantSkills: result.importantSkills,
-      secondarySkills: result.secondarySkills,
+      importantSkills:
+        result.importantSkills as unknown as Prisma.InputJsonValue,
+      secondarySkills:
+        result.secondarySkills as unknown as Prisma.InputJsonValue,
     });
 
     logActivity({
       userId: user.id,
       type: "JOB_ANALYZED",
-      message: "Job analyzed",
+      message: "Job analyzed with AI",
     });
   }
 
@@ -483,27 +379,17 @@ export async function analyzeJobForUser(jobId: string) {
 
 export async function getJobMatch(resumeId: string, jobId: string) {
   const user = await getCurrentUser();
+  if (!user?.id) throw new Error("Unauthorized");
 
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await assertResumeOwner(resumeId, user.id);
 
-  const baseVersion = await getLatestVersion(resumeId, user.id);
+  const [baseVersion, job] = await Promise.all([
+    getLatestVersion(resumeId, user.id),
+    prisma.job.findFirst({ where: { id: jobId, userId: user.id } }),
+  ]);
 
-  if (!baseVersion) {
-    throw new Error("Base not found");
-  }
-
-  const job = await prisma.job.findFirst({
-    where: {
-      id: jobId,
-      userId: user.id,
-    },
-  });
-
-  if (!job) {
-    throw new Error("Job not found");
-  }
+  if (!baseVersion) throw new Error("Base version not found");
+  if (!job) throw new Error("Job not found");
 
   const result = await analyzeJobMatch(baseVersion.content, job.description);
 
@@ -512,13 +398,11 @@ export async function getJobMatch(resumeId: string, jobId: string) {
       resumeVersionId: baseVersion.id,
       jobId,
       userId: user.id,
-
       matchScore: result.matchScore,
       fitLevel: result.fitLevel,
       shouldApply: result.shouldApply,
-
-      missingSkills: result.missingSkills ?? [],
-      reason: result.reason ?? "",
+      missingSkills: result.missingSkills as unknown as Prisma.InputJsonValue,
+      reason: result.reason,
     });
 
     logActivity({
@@ -533,53 +417,49 @@ export async function getJobMatch(resumeId: string, jobId: string) {
 
 export async function getResumeScore(resumeId: string, jobId?: string) {
   const user = await getCurrentUser();
+  if (!user?.id) throw new Error("Unauthorized");
 
-  if (!user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await assertResumeOwner(resumeId, user.id);
 
   const baseVersion = await getLatestVersion(resumeId, user.id);
-
-  if (!baseVersion) {
-    throw new Error("Base not found");
-  }
+  if (!baseVersion) throw new Error("Base version not found");
 
   let jobDescription: string | undefined;
 
   if (jobId) {
     const job = await prisma.job.findFirst({
-      where: {
-        id: jobId,
-        userId: user.id,
-      },
+      where: { id: jobId, userId: user.id },
     });
 
-    jobDescription = job?.description;
+    if (!job) throw new Error("Job not found");
+    jobDescription = job.description;
   }
 
   const result = await calculateResumeScore(
     baseVersion.content,
     jobDescription,
+    user.id,
   );
 
   if (result) {
-    await saveResumeAnalysis({
-      resumeVersionId: baseVersion.id,
-      userId: user.id,
-      score: result.profileScore,
-      atsScore: result.atsScore,
-      profileScore: result.profileScore,
-      contentScore: result.contentScore,
-      skillScore: result.skillScore,
-      experienceScore: result.experienceScore,
-    });
-
-    await saveScoreHistory({
-      resumeVersionId: baseVersion.id,
-      userId: user.id,
-      score: result.profileScore,
-      atsScore: result.atsScore,
-    });
+    await Promise.all([
+      saveResumeAnalysis({
+        resumeVersionId: baseVersion.id,
+        userId: user.id,
+        score: result.profileScore,
+        atsScore: result.atsScore,
+        profileScore: result.profileScore,
+        contentScore: result.contentScore,
+        skillScore: result.skillScore,
+        experienceScore: result.experienceScore,
+      }),
+      saveScoreHistory({
+        resumeVersionId: baseVersion.id,
+        userId: user.id,
+        score: result.profileScore,
+        atsScore: result.atsScore,
+      }),
+    ]);
 
     logActivity({
       userId: user.id,

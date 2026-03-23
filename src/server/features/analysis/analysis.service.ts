@@ -1,5 +1,3 @@
-"use server";
-
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 
@@ -15,12 +13,23 @@ export async function saveResumeAnalysis(data: {
   strengths?: Prisma.InputJsonValue;
   weaknesses?: Prisma.InputJsonValue;
   recommendedSkills?: Prisma.InputJsonValue;
-  summary ?: string;
-  secondarySkills?: Prisma.InputJsonValue;
-  importantSkills?: Prisma.InputJsonValue;
+  summary?: string;
 }) {
-  return prisma.resumeAnalysis.create({
-    data,
+  return prisma.resumeAnalysis.upsert({
+    where: { resumeVersionId: data.resumeVersionId },
+    update: {
+      score: data.score,
+      atsScore: data.atsScore,
+      profileScore: data.profileScore,
+      contentScore: data.contentScore,
+      skillScore: data.skillScore,
+      experienceScore: data.experienceScore,
+      strengths: data.strengths,
+      weaknesses: data.weaknesses,
+      recommendedSkills: data.recommendedSkills,
+      summary: data.summary,
+    },
+    create: data,
   });
 }
 
@@ -30,9 +39,7 @@ export async function saveScoreHistory(data: {
   score?: number;
   atsScore?: number;
 }) {
-  return prisma.scoreHistory.create({
-    data,
-  });
+  return prisma.scoreHistory.create({ data });
 }
 
 export async function saveMatchResult(data: {
@@ -45,8 +52,21 @@ export async function saveMatchResult(data: {
   missingSkills?: Prisma.InputJsonValue;
   reason?: string;
 }) {
-  return prisma.matchResult.create({
-    data,
+  return prisma.matchResult.upsert({
+    where: {
+      resumeVersionId_jobId: {
+        resumeVersionId: data.resumeVersionId,
+        jobId: data.jobId,
+      },
+    },
+    update: {
+      matchScore: data.matchScore,
+      fitLevel: data.fitLevel,
+      shouldApply: data.shouldApply,
+      missingSkills: data.missingSkills,
+      reason: data.reason,
+    },
+    create: data,
   });
 }
 
@@ -62,13 +82,18 @@ export async function saveJobAnalysis(data: {
   score?: number;
   summary?: string;
 }) {
-  return prisma.jobAnalysis.create({
-    data,
+  return prisma.jobAnalysis.upsert({
+    where: { jobId: data.jobId },
+    update: {
+      roleCategory: data.roleCategory,
+      requiredLevel: data.requiredLevel,
+      difficulty: data.difficulty,
+      domain: data.domain,
+      importantSkills: data.importantSkills,
+      secondarySkills: data.secondarySkills,
+      score: data.score,
+      summary: data.summary,
+    },
+    create: data,
   });
 }
-
-
-
-
-
-

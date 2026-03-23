@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { VersionType } from "@prisma/client";
 
 export async function getLatestVersion(
   resumeId: string,
@@ -8,11 +9,9 @@ export async function getLatestVersion(
     where: {
       resumeId,
       userId,
-      versionType: "BASE",
+      versionType: VersionType.BASE,
     },
-    orderBy: {
-      createdAt: "desc",
-    },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -21,12 +20,16 @@ export async function getVersions(
   userId: string
 ) {
   return prisma.resumeVersion.findMany({
-    where: {
-      resumeId,
-      userId,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+    where: { resumeId, userId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getVersionById(
+  versionId: string,
+  userId: string
+) {
+  return prisma.resumeVersion.findFirst({
+    where: { id: versionId, userId },
   });
 }

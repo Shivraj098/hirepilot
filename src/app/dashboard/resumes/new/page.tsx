@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import ResumeUploadCard from "@/components/resume/ResumeUploadCard";
+import ResumeUploadCard from "@/components/resume/resume-upload-card";
 
 export default async function NewResumePage() {
   const user = await getCurrentUser();

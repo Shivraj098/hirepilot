@@ -8,7 +8,7 @@ import Card from "@/components/ui/card";
 import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
 import { motion } from "framer-motion";
-import ResumeDropzone from "./ResumeDropzone";
+import ResumeDropzone from "./resume-dropzone";
 import { useState } from "react";
 import LoadingOverlay from "../ui/loading-overlay";
 export default function ResumeUploadCard() {

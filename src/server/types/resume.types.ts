@@ -1,14 +1,14 @@
 export type ExperienceItem = {
-  company?: string;
-  role?: string;
-  duration?: string;
-  description?: string;
+  company: string;
+  role: string;
+  duration: string;
+  description: string;
 };
 
 export type EducationItem = {
-  institution?: string;
-  degree?: string;
-  duration?: string;
+  institution: string;
+  degree: string;
+  duration: string;
 };
 
 export type ResumeContent = {
@@ -18,5 +18,4 @@ export type ResumeContent = {
   education?: EducationItem[];
 };
 
-export type StructuredResumeContent =
-  ResumeContent;
+export type StructuredResumeContent = ResumeContent;
