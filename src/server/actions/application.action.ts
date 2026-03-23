@@ -21,7 +21,7 @@ export async function applyToJob(resumeId: string, jobId: string) {
     resumeVersionId: version.id,
   });
 
-  await logActivity({
+   logActivity({
     userId: user.id,
     type: "JOB_APPLIED",
     message: "Applied to job",
@@ -44,7 +44,7 @@ export async function changeApplicationStatus(
     status,
   });
 
-  await logActivity({
+   logActivity({
     userId: user.id,
     type: "APPLICATION_STATUS",
     message: `Application status → ${status}`,

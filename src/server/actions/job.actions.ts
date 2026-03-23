@@ -63,13 +63,13 @@ export async function createJob(data: {
       summary: jobScore?.summary ?? undefined,
     });
 
-    await logActivity({
+     logActivity({
       userId: user.id,
       type: "JOB_ANALYZED",
       message: "Job analyzed with AI",
     });
 
-    await logActivity({
+     logActivity({
       userId: user.id,
       type: "JOB_SCORED",
       message: "Job scored",
@@ -80,7 +80,7 @@ export async function createJob(data: {
   // ACTIVITY
   // =========================
 
-  await logActivity({
+   logActivity({
     userId: user.id,
     type: "JOB_CREATED",
     message: `Job added: ${job.title}`,

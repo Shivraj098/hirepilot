@@ -1,16 +1,15 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  
 }
+
+// ==============================
+// ENUMS
+// ==============================
 
 enum JobStatus {
   SAVED
@@ -25,6 +24,48 @@ enum VersionType {
   TAILORED
 }
 
+enum CreatedBy {
+  USER
+  AI
+  SYSTEM
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ActivityType {
+  RESUME_CREATED
+  RESUME_UPDATED
+  RESUME_TAILORED
+  RESUME_SCORED
+  RESUME_INTELLIGENCE
+  
+  JOB_CREATED
+  JOB_ANALYZED
+  JOB_SCORED
+  JOB_IMPORTED
+  JOB_APPLIED
+  MATCH_ANALYZED
+  APPLICATION_STATUS
+  VERSION_UPDATED
+  ANALYZE_LINKEDIN
+  PORTFOLIO_ANALYZED
+  INTERVIEW_GENERATED
+}
+
+// ==============================
+// MODELS
+// ==============================
+
 model User {
   id        String   @id @default(uuid())
   name      String?
@@ -33,13 +74,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  resumes        Resume[]
-  resumeVersions ResumeVersion[]
-  jobs           Job[]
-  applications   JobApplication[]
-  sessions       Session[]
-  accounts       Account[]
-
+  resumes           Resume[]
+  resumeVersions    ResumeVersion[]
+  jobs              Job[]
+  applications      JobApplication[]
+  sessions          Session[]
+  accounts          Account[]
   resumeAnalyses    ResumeAnalysis[]
   activities        Activity[]
   matchResults      MatchResult[]
@@ -51,47 +91,41 @@ model User {
 }
 
 model Resume {
-  id     String @id @default(uuid())
-  userId String
-  title  String
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   versions ResumeVersion[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([userId])
 }
 
 model ResumeVersion {
-  id       String  @id @default(uuid())
-  resumeId String
-  userId   String
-  jobId    String?
-  content  Json
-
-  versionType VersionType @default(BASE)
-  parentId    String?
-
+  id            String      @id @default(uuid())
+  resumeId      String
+  userId        String
+  jobId         String?
+  content       Json
+  versionType   VersionType @default(BASE)
+  parentId      String?
   label         String?
-  createdBy     String?
+  createdBy     CreatedBy   @default(USER)
   notes         String?
   scoreSnapshot Int?
+  createdAt     DateTime    @default(now())
 
-  createdAt DateTime @default(now())
-
-  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job    Job?   @relation(fields: [jobId], references: [id])
-
+  resume   Resume          @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job      Job?            @relation(fields: [jobId], references: [id], onDelete: SetNull)
   parent   ResumeVersion?  @relation("VersionBranch", fields: [parentId], references: [id])
   children ResumeVersion[] @relation("VersionBranch")
 
-  applications JobApplication[]
-  aTSResults   ATSResult[]
-  suggestions  AISuggestion[]
-
-  // ✅ ADD THESE TWO (only once)
-
+  applications      JobApplication[]
+  aTSResults        ATSResult[]
+  suggestions       AISuggestion[]
   tailorBaseResults TailorResult[]   @relation("TailorBase")
   tailorNewResults  TailorResult[]   @relation("TailorNew")
   skillGaps         SkillGap[]
@@ -99,34 +133,33 @@ model ResumeVersion {
   resumeAnalyses    ResumeAnalysis[]
   matchResults      MatchResult[]
   scoreHistories    ScoreHistory[]
+
+  @@index([userId])
+  @@index([resumeId])
+  @@index([jobId])
 }
 
 model Job {
-  id          String  @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String
   title       String
   company     String
   location    String?
   jobLink     String?
   description String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  status JobStatus @default(SAVED)
-  notes  String?
-
-  // NEW 
+  status      JobStatus @default(SAVED)
+  notes       String?
+  priority    Priority?
+  source      String?
+  isFavorite  Boolean   @default(false)
   appliedAt   DateTime?
   interviewAt DateTime?
   offerAt     DateTime?
   rejectedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  priority   String? // LOW / MEDIUM / HIGH
-  source     String? // LinkedIn / Referral / Company site
-  isFavorite Boolean @default(false)
-
-  user           User             @relation(fields: [userId], references: [id])
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   applications   JobApplication[]
   versions       ResumeVersion[]
   skillGaps      SkillGap[]
@@ -134,31 +167,33 @@ model Job {
   matchResults   MatchResult[]
   tailorResults  TailorResult[]
   jobAnalyses    JobAnalysis[]
+
+  @@index([userId])
+  @@index([status])
 }
 
 model JobApplication {
-  id              String @id @default(uuid())
+  id              String    @id @default(uuid())
   userId          String
   jobId           String
   resumeVersionId String
+  status          JobStatus @default(SAVED)
+  notes           String?
+  appliedAt       DateTime?
+  interviewAt     DateTime?
+  offerAt         DateTime?
+  rejectedAt      DateTime?
+  scoreSnapshot   Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  status JobStatus @default(SAVED)
-  notes  String?
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job           Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  //  NEW
-  appliedAt   DateTime?
-  interviewAt DateTime?
-  offerAt     DateTime?
-  rejectedAt  DateTime?
-
-  scoreSnapshot Int?
-
-  user          User          @relation(fields: [userId], references: [id])
-  job           Job           @relation(fields: [jobId], references: [id])
-  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id])
+  @@unique([userId, jobId, resumeVersionId])
+  @@index([userId])
+  @@index([jobId])
 }
 
 model ATSResult {
@@ -170,7 +205,7 @@ model ATSResult {
   weakKeywords    Json
   createdAt       DateTime @default(now())
 
-  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id])
+  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
 }
 
 model AISuggestion {
@@ -182,56 +217,49 @@ model AISuggestion {
   applied          Boolean  @default(false)
   createdAt        DateTime @default(now())
 
-  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id])
+  resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
+
+  @@index([resumeVersionId])
 }
 
 model SkillGap {
-  id    String @id @default(uuid())
-  jobId String
-
-  skill         String
-  priority      String
-  estimatedTime String
-  reasoning     String
-
-  difficulty      String? // NEW
-  learningLink    String? // NEW
+  id              String     @id @default(uuid())
+  jobId           String
+  skill           String
+  priority        Priority   @default(MEDIUM)
+  estimatedTime   String
+  reasoning       String
+  difficulty      Difficulty @default(MEDIUM)
+  learningLink    String?
   resumeVersionId String?
-  resumeVersion   ResumeVersion? @relation(fields: [resumeVersionId], references: [id])
+  createdAt       DateTime   @default(now())
 
-  createdAt DateTime @default(now())
+  job           Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resumeVersion ResumeVersion? @relation(fields: [resumeVersionId], references: [id], onDelete: SetNull)
 
-  job Job @relation(fields: [jobId], references: [id])
+  @@index([jobId])
 }
 
 model InterviewPrep {
-  id    String @id @default(uuid())
-  jobId String
-
+  id              String     @id @default(uuid())
+  jobId           String
   questions       Json
   starDrafts      Json
   technicalTopics Json
-
   type            String
   resumeVersionId String?
-  resumeVersion   ResumeVersion? @relation(fields: [resumeVersionId], references: [id])
+  difficulty      Difficulty @default(MEDIUM)
+  category        String?
+  notes           String?
+  rating          Int?
+  summary         String?
+  status          String?
+  createdAt       DateTime   @default(now())
 
-  createdAt DateTime @default(now())
+  job           Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resumeVersion ResumeVersion? @relation(fields: [resumeVersionId], references: [id], onDelete: SetNull)
 
-  // NEW
-
-  difficulty String? // EASY / MEDIUM / HARD
-  category   String? // HR / TECH / MIXED
-
-  notes String?
-
-  rating Int? // future user feedback
-
-  summary String? // AI summary of prep
-
-  status String? // NEW / REVIEWED / PRACTICED
-
-  job Job @relation(fields: [jobId], references: [id])
+  @@index([jobId])
 }
 
 model Account {
@@ -271,160 +299,148 @@ model VerificationToken {
 }
 
 model ResumeAnalysis {
-  id String @id @default(uuid())
-
-  resumeVersionId String
+  id              String   @id @default(uuid())
+  resumeVersionId String   @unique
   userId          String
-
-  score    Int?
-  atsScore Int?
-
+  score           Int?
+  atsScore        Int?
   profileScore    Int?
   contentScore    Int?
   skillScore      Int?
   experienceScore Int?
-
-  strengths         Json?
-  weaknesses        Json?
+  strengths       Json?
+  weaknesses      Json?
   recommendedSkills Json?
-
-  createdAt DateTime @default(now())
+  summary         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Activity {
-  id String @id @default(uuid())
-
-  userId String
-
-  type       String
+  id         String       @id @default(uuid())
+  userId     String
+  type       ActivityType
   entityType String?
   entityId   String?
-
-  message String?
-
-  createdAt DateTime @default(now())
+  message    String?
+  createdAt  DateTime     @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model MatchResult {
-  id String @id @default(uuid())
-
+  id              String   @id @default(uuid())
   resumeVersionId String
   jobId           String
   userId          String
-
-  matchScore  Int?
-  fitLevel    String?
-  shouldApply Boolean?
-
-  missingSkills Json?
-  reason        String?
-
-  createdAt DateTime @default(now())
+  matchScore      Int?
+  fitLevel        String?
+  shouldApply     Boolean?
+  missingSkills   Json?
+  reason          String?
+  createdAt       DateTime @default(now())
 
   resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
   job           Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([resumeVersionId, jobId])
+  @@index([userId])
 }
 
 model TailorResult {
-  id String @id @default(uuid())
-
+  id            String   @id @default(uuid())
   baseVersionId String
   newVersionId  String
   jobId         String
   userId        String
+  createdAt     DateTime @default(now())
 
-  createdAt DateTime @default(now())
+  baseVersion ResumeVersion @relation("TailorBase", fields: [baseVersionId], references: [id], onDelete: Cascade)
+  newVersion  ResumeVersion @relation("TailorNew", fields: [newVersionId], references: [id], onDelete: Cascade)
+  job         Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  baseVersion ResumeVersion @relation("TailorBase", fields: [baseVersionId], references: [id])
-  newVersion  ResumeVersion @relation("TailorNew", fields: [newVersionId], references: [id])
-
-  job  Job  @relation(fields: [jobId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+  @@unique([baseVersionId, newVersionId])
 }
 
 model ScoreHistory {
-  id String @id @default(uuid())
-
+  id              String   @id @default(uuid())
   resumeVersionId String
   userId          String
-
-  score    Int?
-  atsScore Int?
-
-  createdAt DateTime @default(now())
+  score           Int?
+  atsScore        Int?
+  createdAt       DateTime @default(now())
 
   resumeVersion ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resumeVersionId])
 }
 
 model JobAnalysis {
-  id String @id @default(uuid())
-
-  jobId  String
-  userId String
-
+  id            String   @id @default(uuid())
+  jobId         String   @unique
+  userId        String
   roleCategory  String?
   requiredLevel String?
   difficulty    String?
   domain        String?
-
   importantSkills Json?
   secondarySkills Json?
-
   score         Int?
   summary       String?
-
-  createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model LinkedinProfile {
-  id String @id @default(uuid())
-
-  userId String
-
-  rawText Json?
-
-  analysis Json?
-
-  score Int?
-
+  id        String   @id @default(uuid())
+  userId    String
+  rawText   String?
+  analysis  Json?
+  score     Int?
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model PortfolioProfile {
-  id String @id @default(uuid())
-
-  userId String
-
-  rawText Json?
-
-  analysis Json?
-
-  score Int?
-
+  id        String   @id @default(uuid())
+  userId    String
+  rawText   String?
+  analysis  Json?
+  score     Int?
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
+  @@index([userId])
+}
 
 model AICache {
   id        String   @id @default(uuid())
-
   key       String   @unique
   prompt    String
   result    Json
-
+  expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }

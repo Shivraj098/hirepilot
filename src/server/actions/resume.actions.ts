@@ -60,7 +60,7 @@ export async function createResume(title: string) {
     },
   });
 
-  await logActivity({
+  logActivity({
     userId: user.id,
     type: "RESUME_CREATED",
     message: "Created resume",
@@ -100,7 +100,6 @@ export async function updateResumeSummary(resumeId: string, summary: string) {
       createdBy: "USER",
     },
   });
-  
 
   revalidatePath(`/dashboard/${resumeId}`);
 }
@@ -142,7 +141,6 @@ export async function addExperience(
     },
   });
 
-    
   revalidatePath(`/dashboard/${resumeId}`);
 }
 
@@ -389,13 +387,12 @@ export async function createTailoredVersionForJob(
 
   await recalculateResumePipeline(tailoredVersion.id, user.id);
 
-  await logActivity({
+  logActivity({
     userId: user.id,
 
     type: "RESUME_TAILORED",
     message: `Tailored resume for ${job.title}`,
   });
-  
 
   revalidatePath(`/dashboard/${resumeId}`);
   revalidatePath("/dashboard");
@@ -434,7 +431,7 @@ export async function analyzeResume(resumeId: string) {
     });
   }
 
-  await logActivity({
+  logActivity({
     userId: user.id,
     type: "RESUME_INTELLIGENCE",
     message: "Analyzed resume with AI",
@@ -474,9 +471,9 @@ export async function analyzeJobForUser(jobId: string) {
       secondarySkills: result.secondarySkills,
     });
 
-    await logActivity({
+    logActivity({
       userId: user.id,
-      type: "JOB_INTELLIGENCE",
+      type: "JOB_ANALYZED",
       message: "Job analyzed",
     });
   }
@@ -524,7 +521,7 @@ export async function getJobMatch(resumeId: string, jobId: string) {
       reason: result.reason ?? "",
     });
 
-    await logActivity({
+    logActivity({
       userId: user.id,
       type: "MATCH_ANALYZED",
       message: "Job match analyzed",
@@ -584,7 +581,7 @@ export async function getResumeScore(resumeId: string, jobId?: string) {
       atsScore: result.atsScore,
     });
 
-    await logActivity({
+    logActivity({
       userId: user.id,
       type: "RESUME_SCORED",
       message: "Resume scored",

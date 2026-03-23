@@ -1,8 +1,6 @@
-import { runAI } from "@/server/ai/orchestrator";
+import { runAI } from "@/server/ai/core/orchestrator";
 
-export async function analyzePortfolio(
-  text: string
-) {
+export async function analyzePortfolio(text: string) {
   const prompt = `
 Analyze developer portfolio.
 

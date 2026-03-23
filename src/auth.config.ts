@@ -1,7 +1,13 @@
 import type { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+
+const credentialsSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6).max(100),
+});
 
 declare module "next-auth" {
   interface Session {
@@ -32,13 +38,12 @@ export const authConfig: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
+      if (session.user && token.id) {
+        session.user.id = token.id;
       }
       return session;
     },
   },
-
   providers: [
     Credentials({
       credentials: {
@@ -46,21 +51,22 @@ export const authConfig: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials) return null;
+        const parsed = credentialsSchema.safeParse(credentials);
+        if (!parsed.success) return null;
 
-        const { email, password } = credentials as {
-          email: string;
-          password: string;
-        };
+        const { email, password } = parsed.data;
 
         const user = await prisma.user.findUnique({
           where: { email },
         });
 
-        if (!user || !user.password) return null;
+        // Always run bcrypt to prevent timing attacks
+        const dummyHash =
+          "$2b$10$invaliddummyhashfortimingnormalization000000000";
+        const hashToCompare = user?.password ?? dummyHash;
+        const valid = await bcrypt.compare(password, hashToCompare);
 
-        const valid = await bcrypt.compare(password, user.password);
-        if (!valid) return null;
+        if (!user || !valid) return null;
 
         return {
           id: user.id,

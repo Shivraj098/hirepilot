@@ -164,8 +164,7 @@ ${jobDescription}
       .map((s) => ({
         section: s.section,
         originalContent:
-          resumeContent[s.section] === null ||
-          resumeContent[s.section] === undefined,
+  (resumeContent[s.section] ?? null) as Prisma.InputJsonValue,
         suggestedContent: s.suggestedContent,
 
         priority: s.priority,

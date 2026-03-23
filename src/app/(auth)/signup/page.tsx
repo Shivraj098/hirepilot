@@ -26,7 +26,7 @@ export default function SignupPage() {
     setLoading(false);
 
     if (res.ok) {
-      router.push("/api/auth/signin");
+      router.push("/signin");
     } else {
       alert(data.error || "Something went wrong");
     }

@@ -46,7 +46,7 @@ export async function analyzePortfolioAction(input: string) {
     },
   });
 
-  await logActivity({
+   logActivity({
     userId: user.id,
     type: "PORTFOLIO_ANALYZED",
     message: "Portfolio analyzed",

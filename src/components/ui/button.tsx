@@ -3,16 +3,19 @@
 import { motion, HTMLMotionProps } from "framer-motion";
 import { ReactNode } from "react";
 import clsx from "clsx";
-
+import { Loader2 } from "lucide-react";
 type ButtonProps = HTMLMotionProps<"button"> & {
   children: ReactNode;
   variant?: "primary" | "secondary" | "ghost";
+  loading?: boolean;
 };
 
 export default function Button({
   children,
   className,
   variant = "primary",
+
+  loading = false,
   ...props
 }: ButtonProps) {
   const base =
@@ -39,7 +42,14 @@ export default function Button({
       className={clsx(base, variants[variant], className)}
       {...props}
     >
-      {children}
+      {loading ? (
+        <span className="flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading
+        </span>
+      ) : (
+        children
+      )}
     </motion.button>
   );
 }

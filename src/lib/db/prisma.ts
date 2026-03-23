@@ -2,8 +2,10 @@ import { PrismaClient } from "@prisma/client";
 
 const prismaClientSingleton = () => {
   return new PrismaClient({
-    accelerateUrl: process.env.PRISMA_ACCELERATE_URL!,
-    log: ["query"],
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["error", "warn"]
+        : ["error"],
   });
 };
 

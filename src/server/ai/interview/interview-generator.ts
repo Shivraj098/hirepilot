@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./core/client";
+import { aiJsonCompletion } from "../core/client";
 
 export type InterviewPrepResult = {
   questions: string[];

@@ -4,7 +4,7 @@ import PanelHeader from "@/components/ui/panel-header";
 import StatRow from "@/components/ui/stat-row";
 import Timeline from "@/components/ui/timeline";
 import Tag from "@/components/ui/tag";
-
+import EmptyState from "@/components/ui/empty-state";
 import PageHeader from "@/components/ui/page-header";
 import Tabs from "@/components/ui/tabs";
 import Panel from "@/components/ui/panel";
@@ -94,6 +94,11 @@ export default async function ResumePage({ params }: Props) {
       duration: string;
     }>;
   };
+  const atsResult = baseVersion
+    ? await prisma.aTSResult.findUnique({
+        where: { resumeVersionId: baseVersion.id },
+      })
+    : null;
 
   const experience = content.experience ?? [];
   const skills = content.skills ?? [];
@@ -323,35 +328,25 @@ export default async function ResumePage({ params }: Props) {
           {
             label: "Versions",
             value: "versions",
-             content: (
+            content: (
+              <Section>
+                <Panel>
+                  <PanelHeader title="Version History" />
 
-  <Section>
-
-    <Panel>
-
-      <PanelHeader title="Version History" />
-
-      {tailoredVersions.length === 0 ? (
-        <p>No versions</p>
-      ) : (
-
-        <Timeline
-          items={tailoredVersions.map(v => ({
-            id: v.id,
-            label: `Tailored for ${v.job?.title}`,
-            time: new Date(
-              v.createdAt
-            ).toLocaleString(),
-          }))}
-        />
-
-      )}
-
-    </Panel>
-
-  </Section>
-
-),
+                  {tailoredVersions.length === 0 ? (
+                    <p>No versions</p>
+                  ) : (
+                    <Timeline
+                      items={tailoredVersions.map((v) => ({
+                        id: v.id,
+                        label: `Tailored for ${v.job?.title}`,
+                        time: new Date(v.createdAt).toLocaleString(),
+                      }))}
+                    />
+                  )}
+                </Panel>
+              </Section>
+            ),
           },
 
           {
@@ -424,10 +419,19 @@ export default async function ResumePage({ params }: Props) {
               <Section>
                 <Panel>
                   <PanelHeader title="ATS Score" />
-
-                  <StatRow label="Score" value="78%" />
-
-                  <Progress value={78} />
+                  <StatRow
+                    label="Score"
+                    value={
+                      atsResult ? `${atsResult.score}%` : "Not analyzed yet"
+                    }
+                  />
+                  {atsResult && <Progress value={atsResult.score} />}
+                  {!atsResult && (
+                    <EmptyState
+                      title="No ATS analysis yet"
+                      description="Run AI analysis to see your ATS score"
+                    />
+                  )}
                 </Panel>
 
                 <Panel>

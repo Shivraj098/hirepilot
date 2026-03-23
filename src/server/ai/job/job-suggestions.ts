@@ -1,7 +1,8 @@
-import { aiJsonCompletion } from "./core/client";
-import { parseResumeContent } from "../utils/resume-parser";
+import { aiJsonCompletion } from "@/server/ai/core/client";
+import { parseResumeContent } from "@/server/utils/resume-parser";
 
 export type JobSuggestions = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   map: any;
   length: number;
   roles: string[];

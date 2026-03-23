@@ -1,4 +1,4 @@
-import { parseResumeContent } from "../utils/resume-parser";
+import { parseResumeContent } from "@/server/utils/resume-parser";
 
 type ATSResultData = {
   score: number;

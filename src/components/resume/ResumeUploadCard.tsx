@@ -10,7 +10,7 @@ import Button from "@/components/ui/button";
 import { motion } from "framer-motion";
 import ResumeDropzone from "./ResumeDropzone";
 import { useState } from "react";
-
+import LoadingOverlay from "../ui/loading-overlay";
 export default function ResumeUploadCard() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -130,31 +130,7 @@ router.push(`/dashboard/${resume.id}`);
 
         {/* Overlay */}
 
-        {loading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="
-              absolute
-              inset-0
-              rounded-2xl
-              bg-background/80
-              backdrop-blur-sm
-              flex
-              items-center
-              justify-center
-              z-10
-            "
-          >
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 className="w-6 h-6 animate-spin" />
-
-              <p className="text-sm text-muted-foreground">
-                Processing resume with AI...
-              </p>
-            </div>
-          </motion.div>
-        )}
+        {loading && (<LoadingOverlay text="Processing Resume with AI..." />)}
 
       </div>
     </motion.div>

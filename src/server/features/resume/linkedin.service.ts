@@ -22,7 +22,7 @@ export async function analyzeLinkedinService(userId: string, input: string) {
     },
   });
 
-  await logActivity({
+   logActivity({
     userId,
     type: "ANALYZE_LINKEDIN",
     message: "Linkedin profile analyzed",

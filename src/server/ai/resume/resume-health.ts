@@ -1,4 +1,4 @@
-import { parseResumeContent } from "../utils/resume-parser";
+import { parseResumeContent } from "@/server/utils/resume-parser";
 import {
   MIN_SUMMARY_LENGTH,
   MIN_SKILLS_COUNT,

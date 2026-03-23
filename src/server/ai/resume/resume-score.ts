@@ -1,6 +1,6 @@
-import { runAI } from "./orchestrator";
-import { calculateATS } from "../ats-engine";
-import { checkAIGuard } from "./ai-guard";
+import { runAI } from "@/server/ai/core/orchestrator";
+import { calculateATS } from "@/server/ai/resume/ats-engine";
+import { checkAIGuard } from "@/server/ai/core/ai-guard";
 import { ResumeScoreResult } from "@/server/types/score.types";
 
 export async function calculateResumeScore(

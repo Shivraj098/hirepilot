@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, FileText, Briefcase } from "lucide-react";
 import NavItem from "./nav-item";

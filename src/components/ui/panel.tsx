@@ -21,11 +21,13 @@ export default function Panel({
   rounded-2xl
   border
   border-border/70
+  hover:border-foreground/20
   bg-card
   p-6
   shadow-sm
   transition
   hover:shadow-md
+  
   `,
   className
 )}

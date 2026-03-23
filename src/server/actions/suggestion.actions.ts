@@ -12,7 +12,7 @@ export async function applySuggestion(suggestionId: string) {
     userId: user.id,
   });
 
-  await logActivity({
+   logActivity({
     userId: user.id,
     type: "VERSION_UPDATED",
     message: "Version updated after applying suggestion",

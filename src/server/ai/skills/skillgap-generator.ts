@@ -1,4 +1,4 @@
-import { aiJsonCompletion } from "./core/client";
+import { aiJsonCompletion } from "@/server/ai/core/client";
 
 type SkillGapResult = {
   matchedSkills: string[];

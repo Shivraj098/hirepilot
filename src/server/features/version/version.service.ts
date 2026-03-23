@@ -1,5 +1,3 @@
-"use server";
-
 import { prisma } from "@/lib/db/prisma";
 
 export async function getLatestVersion(
@@ -10,6 +8,7 @@ export async function getLatestVersion(
     where: {
       resumeId,
       userId,
+      versionType: "BASE",
     },
     orderBy: {
       createdAt: "desc",
