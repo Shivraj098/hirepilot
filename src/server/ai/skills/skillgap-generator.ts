@@ -1,117 +1,104 @@
 import { aiJsonCompletion } from "@/server/ai/core/client";
+import { calculateATS } from "@/server/ai/resume/ats-engine";
+import { GeneratedGap, SkillGapResult } from "@/server/types/ai.types";
+import { logError } from "@/server/utils/logger";
 
-type SkillGapResult = {
-  matchedSkills: string[];
-  missingSkills: string[];
-  matchPercentage: number;
-};
+const SYSTEM_PROMPT = `You are an expert career coach and technical skills advisor 
+with deep knowledge of the tech industry learning landscape.
 
-type GeneratedGap = {
-  skill: string;
-  priority: "HIGH" | "MEDIUM" | "LOW";
-  estimatedTime: string;
-  reasoning: string;
-  difficulty?: "EASY" | "MEDIUM" | "HARD";
-  learningLink?: string;
-};
+You create realistic, actionable learning roadmaps with accurate time estimates.
+You always respond with valid JSON only.`;
 
-type AIGap = {
-  skill: string;
-  priority: "HIGH" | "MEDIUM" | "LOW";
-  estimatedTime: string;
-  reasoning: string;
-
-  difficulty?: "EASY" | "MEDIUM" | "HARD";
-  learningLink?: string;
-};
-
-/*
-========================================
-AI generator
-========================================
-*/
+// ==============================
+// AI SKILL GAP GENERATION
+// ==============================
 
 async function generateSkillGapsAI(
   jobDescription: string,
-  skillGap: SkillGapResult,
+  skillGap: SkillGapResult
 ): Promise<GeneratedGap[] | null> {
-  if (!skillGap.missingSkills.length) {
-    return [];
-  }
+  if (skillGap.missingSkills.length === 0) return [];
 
-  const prompt = `
-You are an AI career coach.
+  const topMissing = skillGap.missingSkills
+    .sort(
+      (a, b) =>
+        (skillGap.jobFrequencyMap[b] ?? 0) -
+        (skillGap.jobFrequencyMap[a] ?? 0)
+    )
+    .slice(0, 10);
 
-Generate a learning roadmap.
+  const userPrompt = `Create a prioritized learning roadmap for these missing skills.
 
-Return JSON array.
+JOB CONTEXT:
+${jobDescription.slice(0, 1000)}
 
-Format:
+MISSING SKILLS (ordered by job frequency):
+${topMissing.map((s) => `- ${s} (mentioned ${skillGap.jobFrequencyMap[s] ?? 1}x)`).join("\n")}
 
+ALREADY MATCHED SKILLS:
+${skillGap.matchedSkills.slice(0, 10).join(", ")}
+
+Return a JSON array of learning roadmap items:
 [
- {
-  "skill": string,
-  "priority": "HIGH | MEDIUM | LOW",
-  "estimatedTime": string,
-  "difficulty": "EASY | MEDIUM | HARD",
-  "reasoning": string,
-  "learningLink": string
- }
+  {
+    "skill": <exact skill name>,
+    "priority": <"HIGH" if mentioned 2+ times or critical, "MEDIUM" if mentioned once, "LOW" if nice-to-have>,
+    "estimatedTime": <realistic learning time e.g. "2-3 weeks", "1-2 months">,
+    "difficulty": <"EASY" | "MEDIUM" | "HARD" based on complexity>,
+    "reasoning": <1 sentence: why this skill matters for this specific role>,
+    "learningLink": <a real, specific learning resource URL — use official docs or well-known platforms>
+  }
 ]
 
-Missing skills:
-${skillGap.missingSkills.join(", ")}
+RULES:
+- estimatedTime must be realistic — React takes months to master, not days
+- HIGH priority for skills mentioned 2+ times or that are core to the role
+- learningLink must be a real URL (official docs, Coursera, freeCodeCamp, MDN, etc.)
+- Order items by priority then by estimated learning time (shortest first)`;
 
-Job description:
-${jobDescription}
-`;
-  const result = await aiJsonCompletion<AIGap[]>(prompt, { temperature: 0.3 });
-
-  if (!result) {
-    return null;
-  }
-
-  return result.map((r) => ({
-    skill: r.skill,
-    priority: r.priority,
-    estimatedTime: r.estimatedTime,
-    reasoning: r.reasoning,
-    difficulty: r.difficulty ?? "MEDIUM",
-    learningLink: r.learningLink ?? "",
-  }));
+  return aiJsonCompletion<GeneratedGap[]>(SYSTEM_PROMPT, userPrompt, {
+    temperature: 0.2,
+  });
 }
 
-/*
-========================================
-Fallback (safe)
-========================================
-*/
+// ==============================
+// RULE-BASED FALLBACK
+// ==============================
 
 function fallbackSkillGaps(skillGap: SkillGapResult): GeneratedGap[] {
-  return skillGap.missingSkills.map((skill) => ({
-    skill,
-    priority: "MEDIUM",
-    estimatedTime: "1-2 weeks",
-    reasoning: `${skill} missing from resume`,
-    difficulty: "MEDIUM",
-    learningLink: "",
-  }));
+  return skillGap.missingSkills
+    .sort(
+      (a, b) =>
+        (skillGap.jobFrequencyMap[b] ?? 0) -
+        (skillGap.jobFrequencyMap[a] ?? 0)
+    )
+    .slice(0, 8)
+    .map((skill) => {
+      const frequency = skillGap.jobFrequencyMap[skill] ?? 1;
+      return {
+        skill,
+        priority: frequency >= 2 ? "HIGH" : "MEDIUM",
+        estimatedTime: frequency >= 2 ? "2-4 weeks" : "1-2 weeks",
+        reasoning: `${skill} is required by this role${frequency >= 2 ? " and mentioned multiple times" : ""}.`,
+        difficulty: "MEDIUM" as const,
+        learningLink: "",
+      };
+    });
 }
 
-/*
-========================================
-Main
-========================================
-*/
+// ==============================
+// MAIN EXPORT
+// ==============================
 
 export async function generateSkillGaps(
   jobDescription: string,
-  skillGap: SkillGapResult,
+  skillGap: SkillGapResult
 ): Promise<GeneratedGap[]> {
-  const ai = await generateSkillGapsAI(jobDescription, skillGap);
-
-  if (ai && ai.length > 0) {
-    return ai;
+  try {
+    const ai = await generateSkillGapsAI(jobDescription, skillGap);
+    if (ai && Array.isArray(ai) && ai.length > 0) return ai;
+  } catch (err) {
+    logError("Skill gap AI failed", err);
   }
 
   return fallbackSkillGaps(skillGap);

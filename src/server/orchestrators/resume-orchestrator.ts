@@ -2,10 +2,10 @@ import { prisma } from "@/lib/db/prisma";
 import { calculateATS } from "@/server/ai/resume/ats-engine";
 import { calculateResumeScore } from "@/server/ai/resume/resume-score";
 import { generateSkillGaps } from "@/server/ai/skills/skillgap-generator";
-import { generateJobSuggestions } from "@/server/ai/job/job-suggestions";
 import { analyzeResumeHealth } from "@/server/ai/resume/resume-health";
-
+import { calculateSkillGap } from "@/server/ai/skills/skill-gap";
 import { logError } from "@/server/utils/logger";
+import { Priority, Difficulty } from "@prisma/client";
 
 export async function recalculateResumePipeline(
   resumeVersionId: string,
@@ -19,137 +19,105 @@ export async function recalculateResumePipeline(
   if (!version) return;
 
   const content = version.content;
+  const job = version.job;
 
-  // ATS
+  // ==============================
+  // STEP 1 — ATS (computed once, reused)
+  // ==============================
+
+  let atsData: ReturnType<typeof calculateATS> | null = null;
+
   try {
-    const ats = calculateATS(content, version.job?.description || "");
+    atsData = calculateATS(content, job?.description ?? "");
 
     await prisma.aTSResult.upsert({
       where: { resumeVersionId },
       update: {
-        score: ats.score,
-        matchedKeywords: ats.matchedKeywords,
-        missingKeywords: ats.missingKeywords,
-        weakKeywords: ats.weakKeywords,
+        score: atsData.score,
+        matchedKeywords: atsData.matchedKeywords,
+        missingKeywords: atsData.missingKeywords,
+        weakKeywords: atsData.weakKeywords,
       },
       create: {
         resumeVersionId,
-        score: ats.score,
-        matchedKeywords: ats.matchedKeywords,
-        missingKeywords: ats.missingKeywords,
-        weakKeywords: ats.weakKeywords,
+        score: atsData.score,
+        matchedKeywords: atsData.matchedKeywords,
+        missingKeywords: atsData.missingKeywords,
+        weakKeywords: atsData.weakKeywords,
       },
     });
   } catch (e) {
-    logError("ATS failed", e);
+    logError("ATS pipeline step failed", e);
   }
 
-  // Score
+  // ==============================
+  // STEP 2 — SCORE + HEALTH (parallel)
+  // ==============================
+
+  await Promise.allSettled([
+    // Score
+    calculateResumeScore(content, job?.description, userId)
+      .then(async (score) => {
+        if (!score) return;
+
+        await prisma.resumeVersion.update({
+          where: { id: resumeVersionId },
+          data: { scoreSnapshot: score.profileScore ?? 0 },
+        });
+
+        await prisma.scoreHistory.create({
+          data: {
+            resumeVersionId,
+            userId,
+            score: score.profileScore,
+            atsScore: score.atsScore,
+          },
+        });
+      })
+      .catch((e) => logError("Score pipeline step failed", e)),
+
+    // Health check — result stored on version notes for now
+    Promise.resolve()
+      .then(() => analyzeResumeHealth(content))
+      .catch((e) => logError("Health pipeline step failed", e)),
+  ]);
+
+  // ==============================
+  // STEP 3 — SKILL GAP (only if job linked)
+  // ==============================
+
+  if (!job?.description || !job.id) return;
+
   try {
-    const score = await calculateResumeScore(
-      content,
-      version.job?.description
-    );
+    // Reuse atsData computed in Step 1
+    const skillGap = atsData
+      ? {
+          matchedSkills: atsData.matchedKeywords,
+          missingSkills: atsData.missingKeywords,
+          matchPercentage: atsData.score,
+          jobFrequencyMap: {} as Record<string, number>,
+        }
+      : calculateSkillGap(content, job.description);
 
-    if (score) {
-      await prisma.resumeVersion.update({
-        where: { id: resumeVersionId },
-        data: { 
-          scoreSnapshot: score.profileScore ?? 0,
-         },
-      });
+    const gaps = await generateSkillGaps(job.description, skillGap);
 
-      await prisma.scoreHistory.create({
-        data: {
-          resumeVersionId,
-          userId,
-          score: score.profileScore,
-          atsScore: score.atsScore,
-        },
-      });
+    if (gaps.length > 0) {
+      await prisma.$transaction([
+        prisma.skillGap.deleteMany({ where: { jobId: job.id } }),
+        prisma.skillGap.createMany({
+          data: gaps.map((g) => ({
+            jobId: job.id,
+            skill: g.skill,
+            priority: (g.priority as Priority) ?? Priority.MEDIUM,
+            estimatedTime: g.estimatedTime,
+            reasoning: g.reasoning,
+            difficulty: (g.difficulty as Difficulty) ?? Difficulty.MEDIUM,
+            learningLink: g.learningLink ?? null,
+          })),
+        }),
+      ]);
     }
   } catch (e) {
-    logError("Score failed", e);
-  }
-
-  // Health
-  try {
-    analyzeResumeHealth(content);
-  } catch (e) {
-    logError("Health failed", e);
-  }
-
-  // Suggestions
-  // Job Suggestions
-try {
-
-  const suggestions =
-    await generateJobSuggestions(
-      content
-    );
-
-  if (
-    suggestions &&
-    suggestions.length > 0
-  ) {
-    await prisma.jobAnalysis.createMany({
-      data: suggestions.map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (s: any ) => ({
-          userId,
-
-          roleCategory:
-            s.roleCategory ?? null,
-
-          domain:
-            s.domain ?? null,
-
-          summary:
-            s.summary ?? null,
-        })
-      ),
-    });
-  }
-
-} catch (e) {
-
-  logError(
-    "Suggestions failed",
-    e
-  );
-
-}
-
-  // Skill Gap
-  try {
-    const job = version.job;
-
-if (!job?.description || !job.id) return;
-
-const ats = calculateATS(content, job.description);
-
-const gaps = await generateSkillGaps(job.description, {
-  matchedSkills: ats.matchedKeywords,
-  missingSkills: ats.missingKeywords,
-  matchPercentage: ats.score,
-});
-
-await prisma.skillGap.deleteMany({
-  where: { jobId: job.id },
-});
-
-await prisma.skillGap.createMany({
-  data: gaps.map((g) => ({
-    jobId: job.id,
-    skill: g.skill,
-    priority: g.priority,
-    estimatedTime: g.estimatedTime,
-    reasoning: g.reasoning,
-    difficulty: g.difficulty,
-    learningLink: g.learningLink,
-  })),
-});
-  } catch (e) {
-    logError("Skill gap failed", e);
+    logError("Skill gap pipeline step failed", e);
   }
 }

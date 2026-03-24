@@ -1,46 +1,51 @@
 import { aiJsonCompletion } from "./client";
 import { hashPrompt } from "./hash";
-import {
-  getCachedAI,
-  saveCachedAI,
-} from "./ai-cache";
+import { getCachedAI, saveCachedAI } from "./ai-cache";
+import { logError } from "@/server/utils/logger";
 
 export async function runAI<T>(
-  prompt: string,
+  systemPrompt: string,
+  userPrompt: string,
   options?: {
     temperature?: number;
+    userId?: string;
+    ttlHours?: number;
+    skipCache?: boolean;
   }
 ): Promise<T | null> {
-  const key = hashPrompt(prompt);
+  // User-scoped cache key prevents cross-user cache hits
+  const cacheInput = options?.userId
+    ? `${options.userId}:${systemPrompt}:${userPrompt}`
+    : `${systemPrompt}:${userPrompt}`;
 
-  const cached = await getCachedAI(key);
+  const key = hashPrompt(cacheInput);
 
-  if (cached) {
-    return cached.result as T;
+  if (!options?.skipCache) {
+    const cached = await getCachedAI(key);
+    if (cached) {
+      return cached.result as T;
+    }
   }
 
   try {
     const result = await aiJsonCompletion<T>(
-      prompt,
-      {
-        temperature:
-          options?.temperature ?? 0.2,
-      }
+      systemPrompt,
+      userPrompt,
+      { temperature: options?.temperature ?? 0.2 }
     );
 
     if (result) {
       await saveCachedAI(
         key,
-        prompt,
-        result
+        userPrompt,
+        result,
+        options?.ttlHours
       );
     }
 
-    return result ?? null;
+    return result;
   } catch (err) {
-    console.error(err);
+    logError("runAI failed", err);
     return null;
   }
 }
-
-export { aiJsonCompletion };

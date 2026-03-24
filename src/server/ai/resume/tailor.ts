@@ -1,81 +1,80 @@
 import { runAI } from "@/server/ai/core/orchestrator";
-import { parseResumeContent } from "../../utils/resume-parser";
 import { calculateATS } from "./ats-engine";
+import { parseResumeContent } from "@/server/utils/resume-parser";
+import { ResumeContent } from "@/server/types/resume.types";
+import { logError } from "@/server/utils/logger";
 
-type ExperienceEntry = {
-  company?: string;
-  role?: string;
-  duration?: string;
-  description?: string;
-};
+const SYSTEM_PROMPT = `You are an expert resume optimizer specializing in ATS optimization 
+and tailoring resumes for specific job descriptions.
 
-type EducationEntry = {
-  institution?: string;
-  degree?: string;
-  duration?: string;
-};
-
-export type ResumeContent = {
-  summary?: string;
-  experience?: ExperienceEntry[];
-  skills?: string[];
-  education?: EducationEntry[];
-};
+You improve resumes by rewriting content to better match job requirements while 
+maintaining complete honesty — you never fabricate experience or skills.
+You always respond with valid JSON only.`;
 
 export async function tailorResumeWithAI(
   resumeContent: ResumeContent,
   jobDescription: string,
-): Promise<ResumeContent> {
+  userId?: string
+): Promise<{ content: ResumeContent; improvements: string[] }> {
   const parsed = parseResumeContent(resumeContent);
-
   const ats = calculateATS(parsed, jobDescription);
 
-  const prompt = `
-You are an expert resume optimizer.
+  const userPrompt = `Tailor this resume to better match the job description.
 
-Rewrite resume to better match job.
+CURRENT ATS SCORE: ${ats.score}/100
+MISSING KEYWORDS: ${ats.missingKeywords.slice(0, 20).join(", ")}
+WEAK AREAS: ${ats.weakKeywords.slice(0, 10).join(", ")}
 
-Rules:
-
-- Keep JSON format
-- Do not remove fields
-- Improve summary
-- Rewrite experience bullets
-- Reorder skills by importance
-- Inject missing keywords naturally
-- Optimize for ATS
-
-ATS score: ${ats.score}
-
-Missing skills:
-${ats.missingKeywords.join(", ")}
-
-Resume:
+CURRENT RESUME:
 ${JSON.stringify(parsed, null, 2)}
 
-Job:
-${jobDescription}
+JOB DESCRIPTION:
+${jobDescription.slice(0, 2000)}
 
-Return JSON only.
-`;
+Return this exact JSON structure:
+{
+  "resume": {
+    "summary": <rewritten summary incorporating relevant keywords naturally>,
+    "skills": <reordered and supplemented skills array — only add skills plausible given experience>,
+    "experience": <experience array with bullets rewritten to highlight relevant achievements>,
+    "education": <unchanged education array>
+  },
+  "improvements": [<3-5 specific changes made and why each improves the match>]
+}
+
+STRICT RULES:
+- Never add skills or experience the candidate does not have
+- Only reorder, reword, and emphasize existing content
+- Inject missing keywords naturally into existing experience descriptions
+- Reorder skills to put most relevant ones first
+- Improve summary to mention the target role and key required skills
+- Each experience bullet should quantify impact where possible`;
 
   try {
-    const result = await runAI<ResumeContent>(prompt, {
+    const result = await runAI<{
+      resume: ResumeContent;
+      improvements: string[];
+    }>(SYSTEM_PROMPT, userPrompt, {
       temperature: 0.2,
+      userId,
+      skipCache: true, // Always fresh tailor
     });
 
-    if (!result) return parsed;
+    if (!result?.resume) {
+      return { content: parsed, improvements: [] };
+    }
 
     return {
-      summary: result.summary ?? parsed.summary,
-
-      skills: result.skills ?? parsed.skills,
-
-      experience: result.experience ?? parsed.experience,
-
-      education: result.education ?? parsed.education,
+      content: {
+        summary: result.resume.summary ?? parsed.summary,
+        skills: result.resume.skills ?? parsed.skills,
+        experience: result.resume.experience ?? parsed.experience,
+        education: result.resume.education ?? parsed.education,
+      },
+      improvements: result.improvements ?? [],
     };
-  } catch {
-    return parsed;
+  } catch (err) {
+    logError("Resume tailor failed", err);
+    return { content: parsed, improvements: [] };
   }
 }

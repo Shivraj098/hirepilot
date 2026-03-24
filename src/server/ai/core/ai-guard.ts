@@ -1,49 +1,39 @@
+import { prisma } from "@/lib/db/prisma";
 import { AI_LIMIT, AI_WINDOW_MS } from "@/server/config/constants";
+import { logError } from "@/server/utils/logger";
 
+export async function checkAIGuard(userId: string): Promise<void> {
+  try {
+    const windowStart = new Date(Date.now() - AI_WINDOW_MS);
 
-const calls = new Map<
-  string,
-  { count: number; time: number }
->();
-
-
-const LIMIT = AI_LIMIT;
-const WINDOW = AI_WINDOW_MS;
-
-export function checkAIGuard(
-  userId: string
-) {
-  const now = Date.now();
-
-  const data =
-    calls.get(userId);
-
-  if (!data) {
-    calls.set(userId, {
-      count: 1,
-      time: now,
+    const recentCount = await prisma.activity.count({
+      where: {
+        userId,
+        type: {
+          in: [
+            "RESUME_SCORED",
+            "RESUME_INTELLIGENCE",
+            "JOB_ANALYZED",
+            "MATCH_ANALYZED",
+            "INTERVIEW_GENERATED",
+            "ANALYZE_LINKEDIN",
+            "PORTFOLIO_ANALYZED",
+          ],
+        },
+        createdAt: { gte: windowStart },
+      },
     });
 
-    return;
+    if (recentCount >= AI_LIMIT) {
+      throw new Error(
+        `AI rate limit exceeded. You can make ${AI_LIMIT} AI requests per minute.`
+      );
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("rate limit")) {
+      throw err;
+    }
+    // DB error — fail open, log and continue
+    logError("AI Guard check failed", err);
   }
-
-  if (
-    now - data.time >
-    WINDOW
-  ) {
-    calls.set(userId, {
-      count: 1,
-      time: now,
-    });
-
-    return;
-  }
-
-  if (data.count >= LIMIT) {
-    throw new Error(
-      "Too many AI requests"
-    );
-  }
-
-  data.count++;
 }

@@ -1,57 +1,53 @@
-import { extractResumeSkills, extractJobKeywords } from "@/server/ai/resume/extractors";
+import { extractResumeSkills } from "@/server/ai/resume/extractors";
 import { calculateATS } from "@/server/ai/resume/ats-engine";
+import { SkillGapResult } from "@/server/types/ai.types";
 
 function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "")
-    .trim();
+  return text.toLowerCase().replace(/[^\w\s]/g, "").trim();
 }
 
-function uniqueArray(arr: string[]): string[] {
+function uniqueArray<T>(arr: T[]): T[] {
   return Array.from(new Set(arr));
 }
 
-function isPartialMatch(a: string, b: string): boolean {
-  return a.includes(b) || b.includes(a);
+function isMatch(resumeSkill: string, jobSkill: string): boolean {
+  const a = normalize(resumeSkill);
+  const b = normalize(jobSkill);
+  // Exact match or one contains the other (but only if difference is small)
+  if (a === b) return true;
+  if (a.length > 3 && b.length > 3) {
+    if (a.includes(b) && b.length / a.length > 0.6) return true;
+    if (b.includes(a) && a.length / b.length > 0.6) return true;
+  }
+  return false;
 }
 
 export function calculateSkillGap(
   resumeContent: unknown,
-  jobDescription: string,
-) {
-  const rawResumeSkills = extractResumeSkills(resumeContent);
-  const rawJobSkills = extractJobKeywords(jobDescription);
-
+  jobDescription: string
+): SkillGapResult {
   const resumeSkills = uniqueArray(
-    rawResumeSkills.map((s) => normalize(s))
+    extractResumeSkills(resumeContent).map(normalize)
   );
 
-  const jobSkillsNormalized = rawJobSkills.map((s) =>
-    normalize(s)
-  );
+  // Use ATS engine for consistent keyword extraction
+  const ats = calculateATS(resumeContent, jobDescription);
 
   const jobFrequencyMap: Record<string, number> = {};
-
-  for (const skill of jobSkillsNormalized) {
-    jobFrequencyMap[skill] =
-      (jobFrequencyMap[skill] || 0) + 1;
+  for (const kw of ats.matchedKeywords.concat(ats.missingKeywords)) {
+    jobFrequencyMap[kw] = (jobFrequencyMap[kw] ?? 0) + 1;
   }
 
-  const uniqueJobSkills = uniqueArray(
-    jobSkillsNormalized
-  );
+  const uniqueJobSkills = uniqueArray([
+    ...ats.matchedKeywords,
+    ...ats.missingKeywords,
+  ]);
 
   const matchedSkills: string[] = [];
   const missingSkills: string[] = [];
 
-  // ✅ match logic
   for (const jobSkill of uniqueJobSkills) {
-    const matched = resumeSkills.some(
-      (resumeSkill) =>
-        isPartialMatch(resumeSkill, jobSkill)
-    );
-
+    const matched = resumeSkills.some((rs) => isMatch(rs, jobSkill));
     if (matched) {
       matchedSkills.push(jobSkill);
     } else {
@@ -59,29 +55,10 @@ export function calculateSkillGap(
     }
   }
 
-  // ✅ ATS engine used for score
-  const ats = calculateATS(
-    resumeContent,
-    jobDescription,
-  );
-
   return {
-  matchedSkills,
-  missingSkills,
-  matchPercentage: ats.score,
-  jobFrequencyMap,
-
-  roadmap: missingSkills.map(skill => ({
-    skill,
-    priority:
-      jobFrequencyMap[skill] >= 2
-        ? "HIGH"
-        : "MEDIUM",
-
-    estimatedTime:
-      jobFrequencyMap[skill] >= 2
-        ? "2-4 weeks"
-        : "1-2 weeks",
-  })),
-};
+    matchedSkills,
+    missingSkills,
+    matchPercentage: ats.score,
+    jobFrequencyMap,
+  };
 }

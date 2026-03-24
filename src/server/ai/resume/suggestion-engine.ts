@@ -1,199 +1,166 @@
-import { Prisma } from "@prisma/client";
 import { runAI } from "@/server/ai/core/orchestrator";
-import { parseResumeContent } from "../../utils/resume-parser";
 import { calculateATS } from "./ats-engine";
+import { parseResumeContent } from "@/server/utils/resume-parser";
+import { ResumeContent } from "@/server/types/resume.types";
+import { SkillGapResult } from "@/server/types/ai.types";
+import { Prisma } from "@prisma/client";
 
-type ExperienceItem = {
-  company: string;
-  role: string;
-  duration: string;
-  description: string;
-};
-
-type EducationItem = {
-  institution: string;
-  degree: string;
-  duration: string;
-};
-
-export type StructuredResumeContent = {
-  summary?: string;
-  experience?: ExperienceItem[];
-  skills?: string[];
-  education?: EducationItem[];
-};
-
-export type SkillGapResult = {
-  matchedSkills: string[];
-  missingSkills: string[];
-  matchPercentage: number;
-};
-
-type SectionSuggestion = {
-  section: keyof StructuredResumeContent;
+export type SectionSuggestion = {
+  section: keyof ResumeContent;
   originalContent: Prisma.InputJsonValue;
   suggestedContent: Prisma.InputJsonValue;
-  priority?: string;
-  impactscore?: number;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  impactScore: number;
+  type: "rewrite" | "add" | "reorder" | "improve";
+  reasoning: string;
 };
 
-/*
-====================================
-Rule fallback
-====================================
-*/
+const SYSTEM_PROMPT = `You are a senior ATS optimization expert and professional resume writer 
+with experience helping candidates land roles at top tech companies.
+
+You provide specific, actionable resume improvements that measurably increase ATS scores 
+and recruiter appeal. You never fabricate experience or skills the candidate doesn't have.
+You always respond with valid JSON only.`;
+
+// ==============================
+// AI SUGGESTIONS
+// ==============================
+
+async function generateAISuggestions(
+  resumeContent: ResumeContent,
+  jobDescription: string,
+  atsData: ReturnType<typeof calculateATS>
+): Promise<SectionSuggestion[] | null> {
+  const parsed = parseResumeContent(resumeContent);
+
+  const userPrompt = `Generate targeted resume improvements to increase ATS score and recruiter appeal.
+
+CURRENT ATS SCORE: ${atsData.score}/100
+MATCHED KEYWORDS: ${atsData.matchedKeywords.slice(0, 15).join(", ")}
+MISSING KEYWORDS: ${atsData.missingKeywords.slice(0, 15).join(", ")}
+WEAK KEYWORDS (present but not in skills): ${atsData.weakKeywords.slice(0, 10).join(", ")}
+
+CURRENT RESUME:
+${JSON.stringify(parsed, null, 2)}
+
+JOB DESCRIPTION:
+${jobDescription.slice(0, 2000)}
+
+Return a JSON array of 3-5 suggestions (no more):
+[
+  {
+    "section": <"summary" | "skills" | "experience" | "education">,
+    "suggestedContent": <the improved content for this section — must match section type exactly>,
+    "priority": <"HIGH" | "MEDIUM" | "LOW">,
+    "impactScore": <number 1-100 — how much this improves ATS and recruiter appeal>,
+    "type": <"rewrite" | "add" | "reorder" | "improve">,
+    "reasoning": <1-2 sentences explaining exactly why this change helps>
+  }
+]
+
+STRICT RULES:
+- Never fabricate skills or experience the candidate does not have
+- Only suggest adding skills that appear in the job description AND are plausible given their experience
+- impactScore above 70 only for changes that directly address missing high-frequency keywords
+- Prioritize skills section improvements as they have highest ATS impact
+- suggestedContent for "skills" must be an array of strings
+- suggestedContent for "summary" must be a string
+- suggestedContent for "experience" must be an array of experience objects`;
+
+  const result = await runAI
+    {
+      section: keyof ResumeContent;
+      suggestedContent: Prisma.InputJsonValue;
+      priority: "HIGH" | "MEDIUM" | "LOW";
+      impactScore: number;
+      type: "rewrite" | "add" | "reorder" | "improve";
+      reasoning: string;
+    }[]
+  >(SYSTEM_PROMPT, userPrompt, { temperature: 0.2 });
+
+  if (!result || !Array.isArray(result)) return null;
+
+  const validSections = ["summary", "skills", "experience", "education"];
+
+  return result
+    .filter((s) => validSections.includes(s.section as string))
+    .slice(0, 5)
+    .map((s) => ({
+      section: s.section,
+      originalContent: (resumeContent[s.section] ?? null) as Prisma.InputJsonValue,
+      suggestedContent: s.suggestedContent,
+      priority: s.priority ?? "MEDIUM",
+      impactScore: Math.min(100, Math.max(0, s.impactScore ?? 50)),
+      type: s.type ?? "improve",
+      reasoning: s.reasoning ?? "",
+    }));
+}
+
+// ==============================
+// RULE-BASED FALLBACK
+// ==============================
 
 function generateRuleSuggestions(
-  resumeContent: StructuredResumeContent,
-  skillGap: SkillGapResult,
+  resumeContent: ResumeContent,
+  skillGap: SkillGapResult
 ): SectionSuggestion[] {
   const suggestions: SectionSuggestion[] = [];
 
-  if (resumeContent.summary) {
-    suggestions.push({
-      section: "summary",
-      originalContent: resumeContent.summary,
-      suggestedContent: `${resumeContent.summary}
-
-Optimized to match job-required skills.`,
-      priority: "MEDIUM",
-      impactscore: 40,
-    });
-  }
-
   if (skillGap.missingSkills.length > 0) {
     const existing = resumeContent.skills ?? [];
+    const highPriorityMissing = skillGap.missingSkills
+      .filter((s) => (skillGap.jobFrequencyMap[s] ?? 0) >= 2)
+      .slice(0, 5);
 
+    if (highPriorityMissing.length > 0) {
+      suggestions.push({
+        section: "skills",
+        originalContent: existing as Prisma.InputJsonValue,
+        suggestedContent: [
+          ...existing,
+          ...highPriorityMissing,
+        ] as Prisma.InputJsonValue,
+        priority: "HIGH",
+        impactScore: 65,
+        type: "add",
+        reasoning: `Adding ${highPriorityMissing.join(", ")} will directly address the most frequently mentioned missing keywords in the job description.`,
+      });
+    }
+  }
+
+  if (resumeContent.summary && resumeContent.summary.length < 150) {
     suggestions.push({
-      section: "skills",
-      originalContent: existing,
-      suggestedContent: [
-        ...existing,
-        ...skillGap.missingSkills.filter((s) => !existing.includes(s)),
-      ],
-      priority: "HIGH",
-      impactscore: 60,
+      section: "summary",
+      originalContent: resumeContent.summary as Prisma.InputJsonValue,
+      suggestedContent: resumeContent.summary as Prisma.InputJsonValue,
+      priority: "MEDIUM",
+      impactScore: 40,
+      type: "improve",
+      reasoning: "Your summary is too brief. Expanding it with role-specific keywords will improve both ATS score and recruiter engagement.",
     });
   }
 
   return suggestions;
 }
 
-/*
-====================================
-AI Suggestions (Phase-2)
-====================================
-*/
-
-async function generateAISuggestions(
-  resumeContent: StructuredResumeContent,
-  jobDescription: string,
-): Promise<SectionSuggestion[] | null> {
-  const parsed = parseResumeContent(resumeContent);
-
-  const ats = calculateATS(parsed, jobDescription);
-
-  const prompt = `
-You are an expert resume reviewer AI.
-
-Suggest improvements.
-
-Explain why suggestion
-
-ImpactScore realistic
-
-Priority realistic 
-
-Explain why change improves ATS or clarity 
-
-Return JSON array.
-
-Format:
-
-[
-  {
-    "section": "summary | skills | experience | education",
-    "suggestedContent": any,
-    "priority": "HIGH | MEDIUM | LOW",
-    "impactScore": number,
-    "type": "rewrite | add | reorder | improve"
-  }
-]
-
-Rules:
-
-- Improve ATS score
-- Use missing keywords
-- Improve wording
-- Improve skills order
-- Improve experience bullets
-- Improve summary
-
-ATS score:
-${ats.score}
-
-Missing:
-${ats.missingKeywords.join(", ")}
-
-Resume:
-${JSON.stringify(parsed, null, 2)}
-
-Job:
-${jobDescription}
-`;
-
-  try {
-    const result = await runAI<
-      {
-        section: keyof StructuredResumeContent;
-        suggestedContent: Prisma.InputJsonValue;
-        priority: string;
-        impactScore: number;
-        type: string;
-      }[]
-    >(prompt, {
-      temperature: 0.2,
-    });
-
-    if (!result) return null;
-
-    const validSections = ["summary", "skills", "experience", "education"];
-
-    return result
-      .filter((s) => validSections.includes(s.section as string))
-      .map((s) => ({
-        section: s.section,
-        originalContent:
-  (resumeContent[s.section] ?? null) as Prisma.InputJsonValue,
-        suggestedContent: s.suggestedContent,
-
-        priority: s.priority,
-        impactscore: s.impactScore ?? 50,
-        type: s.type ?? "improve",
-      }));
-  } catch (err) {
-    console.error("AI suggestion error", err);
-
-    return null;
-  }
-}
-/*
-====================================
-Main
-====================================
-*/
+// ==============================
+// MAIN EXPORT
+// ==============================
 
 export async function generateSectionSuggestions(
-  resumeContent: StructuredResumeContent,
+  resumeContent: ResumeContent,
   skillGap: SkillGapResult,
-  jobDescription: string,
+  jobDescription: string
 ): Promise<SectionSuggestion[]> {
-  const ai = await generateAISuggestions(resumeContent, jobDescription);
+  const atsData = calculateATS(resumeContent, jobDescription);
 
-  if (ai && ai.length > 0) {
-    return ai;
-  }
+  const ai = await generateAISuggestions(
+    resumeContent,
+    jobDescription,
+    atsData
+  );
 
-  // fallback uses skillGap
+  if (ai && ai.length > 0) return ai;
+
   return generateRuleSuggestions(resumeContent, skillGap);
 }

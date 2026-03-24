@@ -1,60 +1,47 @@
 import { runAI } from "@/server/ai/core/orchestrator";
+import { JobIntelligence } from "@/server/types/ai.types";
 
-export type JobIntelligence = {
-  roleCategory: string;
+const SYSTEM_PROMPT = `You are an expert job market analyst with deep knowledge of 
+tech industry roles, required skills, and career levels.
 
-  requiredLevel: string;
-
-  difficulty: string;
-
-  domain: string;
-
-  importantSkills: string[];
-
-  secondarySkills: string[];
-
-  jobTypeHint: string;
-};
+You analyze job descriptions to extract structured insights that help candidates 
+understand role requirements and assess their fit.
+You always respond with valid JSON only.`;
 
 export async function analyzeJob(
-  jobDescription: string
+  jobDescription: string,
+  userId?: string
 ): Promise<JobIntelligence | null> {
-  const prompt = `
-You are an AI job analyzer.
+  if (!jobDescription || jobDescription.trim().length < 50) {
+    return null;
+  }
 
-Analyze job description.
+  const userPrompt = `Analyze this job description and extract structured insights.
 
-Return JSON only.
+JOB DESCRIPTION:
+${jobDescription.slice(0, 3000)}
 
-Format:
-
+Return this exact JSON structure:
 {
-  "roleCategory": string,
-  "requiredLevel": string,
-  "difficulty": string,
-  "domain": string,
-  "importantSkills": string[],
-  "secondarySkills": string[],
-  "jobTypeHint": string
+  "roleCategory": <specific role category e.g. "Frontend Engineer", "ML Engineer", "Product Manager">,
+  "requiredLevel": <"Intern" | "Junior" | "Mid" | "Senior" | "Lead" | "Staff" | "Principal">,
+  "difficulty": <"Easy" | "Medium" | "Hard"> based on skill requirements and competition,
+  "domain": <"Web" | "Backend" | "AI/ML" | "DevOps" | "Data" | "Mobile" | "Security" | "Full-Stack" | "Other">,
+  "importantSkills": [<8-12 most critical skills explicitly required>],
+  "secondarySkills": [<5-8 nice-to-have or implied skills>],
+  "salaryIndicator": <"Entry" | "Mid" | "Senior" | "Executive"> based on requirements,
+  "remoteType": <"Remote" | "Hybrid" | "On-site" | "Unknown">,
+  "keyResponsibilities": [<3-5 main responsibilities extracted from description>]
 }
 
-Rules:
+RULES:
+- importantSkills must only include skills explicitly mentioned in the job description
+- requiredLevel based on years of experience required and complexity of role
+- difficulty Hard means 5+ years required OR very specialized tech stack`;
 
-requiredLevel = Intern | Junior | Mid | Senior
-difficulty = Easy | Medium | Hard
-domain = Web | Backend | AI | DevOps | Data | Mobile | Other
-
-Job:
-${jobDescription}
-`;
-
-  const result =
-    await runAI<JobIntelligence>(
-      prompt,
-      {
-        temperature: 0.2,
-      }
-    );
-
-  return result;
+  return runAI<JobIntelligence>(SYSTEM_PROMPT, userPrompt, {
+    temperature: 0.1,
+    userId,
+    ttlHours: 48,
+  });
 }

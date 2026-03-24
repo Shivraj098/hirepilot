@@ -1,85 +1,75 @@
 import OpenAI from "openai";
+import { logError } from "@/server/utils/logger";
+
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error("OPENAI_API_KEY is not set");
+}
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-/*
-========================================
-CONFIG
-========================================
-*/
-
 export const AI_MODEL = "gpt-4o-mini";
 export const AI_TEMPERATURE = 0.2;
-export const AI_MAX_TOKENS = 1500;
+export const AI_MAX_TOKENS = 2000;
+export const AI_TIMEOUT_MS = 20000;
+export const AI_RETRIES = 2;
 
-const AI_TIMEOUT = 15000;
-const AI_RETRIES = 2;
+// ==============================
+// TIMEOUT WRAPPER
+// ==============================
 
-/*
-========================================
-TIMEOUT
-========================================
-*/
-
-function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number
-): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error("AI timeout"));
-    }, ms);
-
+    const timer = setTimeout(
+      () => reject(new Error(`AI request timed out after ${ms}ms`)),
+      ms
+    );
     promise
-      .then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
+      .then((v) => { clearTimeout(timer); resolve(v); })
+      .catch((e) => { clearTimeout(timer); reject(e); });
   });
 }
 
-/*
-========================================
-SAFE JSON PARSE
-========================================
-*/
+// ==============================
+// SAFE JSON PARSE
+// ==============================
 
-function safeJsonParse<T>(
-  text: string
-): T | null {
+export function safeJsonParse<T>(text: string): T | null {
   try {
     return JSON.parse(text) as T;
   } catch {
+    // Try to extract JSON object or array from text
+    const objectMatch = text.match(/\{[\s\S]*\}/);
+    const arrayMatch = text.match(/\[[\s\S]*\]/);
+    const match = objectMatch ?? arrayMatch;
+    if (!match) return null;
     try {
-      const match = text.match(
-        /\{[\s\S]*\}|\[[\s\S]*\]/
-      );
-
-      if (!match) return null;
-
-      return JSON.parse(
-        match[0]
-      ) as T;
+      return JSON.parse(match[0]) as T;
     } catch {
       return null;
     }
   }
 }
 
-/*
-========================================
-BASE AI CALL
-========================================
-*/
+// ==============================
+// NON-RETRYABLE ERROR CHECK
+// ==============================
+
+function isNonRetryable(err: unknown): boolean {
+  if (err instanceof OpenAI.APIError) {
+    return [400, 401, 403, 404, 422].includes(err.status);
+  }
+  return false;
+}
+
+// ==============================
+// BASE AI CALL
+// ==============================
 
 async function callAI(
-  prompt: string,
+  systemPrompt: string,
+  userPrompt: string,
   options?: {
     temperature?: number;
     maxTokens?: number;
@@ -88,125 +78,70 @@ async function callAI(
   return withTimeout(
     openai.chat.completions.create({
       model: AI_MODEL,
-      temperature:
-        options?.temperature ??
-        AI_TEMPERATURE,
-
-      max_tokens:
-        options?.maxTokens ??
-        AI_MAX_TOKENS,
-
+      temperature: options?.temperature ?? AI_TEMPERATURE,
+      max_tokens: options?.maxTokens ?? AI_MAX_TOKENS,
+      response_format: { type: "json_object" },
       messages: [
-        {
-          role: "system",
-          content:
-            "Return clean response. If JSON requested, return valid JSON only.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
       ],
     }),
-    AI_TIMEOUT
+    AI_TIMEOUT_MS
   );
 }
 
-/*
-========================================
-TEXT COMPLETION
-========================================
-*/
+// ==============================
+// TEXT COMPLETION
+// ==============================
 
 export async function aiTextCompletion(
   prompt: string,
-  options?: {
-    temperature?: number;
-    maxTokens?: number;
-  }
+  options?: { temperature?: number; maxTokens?: number }
 ): Promise<string> {
-
   for (let i = 0; i <= AI_RETRIES; i++) {
     try {
-
-      const res =
-        await callAI(
-          prompt,
-          options
-        );
-
-      return (
-        res.choices[0]
-          ?.message
-          ?.content ?? ""
+      const res = await callAI(
+        "You are a helpful assistant.",
+        prompt,
+        options
       );
-
+      return res.choices[0]?.message?.content ?? "";
     } catch (err) {
-
-      console.error(
-        "AI TEXT ERROR",
-        err
-      );
-
-      if (i === AI_RETRIES) {
+      if (isNonRetryable(err)) {
+        logError("AI TEXT NON-RETRYABLE", err);
         return "";
       }
+      logError(`AI TEXT ERROR (attempt ${i + 1})`, err);
+      if (i === AI_RETRIES) return "";
     }
   }
-
   return "";
 }
 
-/*
-========================================
-JSON COMPLETION
-========================================
-*/
+// ==============================
+// JSON COMPLETION
+// ==============================
 
 export async function aiJsonCompletion<T>(
-  prompt: string,
-  options?: {
-    temperature?: number;
-    maxTokens?: number;
-  }
+  systemPrompt: string,
+  userPrompt: string,
+  options?: { temperature?: number; maxTokens?: number }
 ): Promise<T | null> {
-
   for (let i = 0; i <= AI_RETRIES; i++) {
-
     try {
-
-      const res =
-        await callAI(
-          prompt,
-          options
-        );
-
-      const text =
-        res.choices[0]
-          ?.message
-          ?.content ?? "";
-
+      const res = await callAI(systemPrompt, userPrompt, options);
+      const text = res.choices[0]?.message?.content ?? "";
       if (!text) return null;
-
-      const parsed =
-        safeJsonParse<T>(text);
-
-      if (parsed) {
-        return parsed;
-      }
-
+      const parsed = safeJsonParse<T>(text);
+      if (parsed) return parsed;
     } catch (err) {
-
-      console.error(
-        "AI JSON ERROR",
-        err
-      );
-
-      if (i === AI_RETRIES) {
+      if (isNonRetryable(err)) {
+        logError("AI JSON NON-RETRYABLE", err);
         return null;
       }
+      logError(`AI JSON ERROR (attempt ${i + 1})`, err);
+      if (i === AI_RETRIES) return null;
     }
   }
-
   return null;
 }
