@@ -1,18 +1,7 @@
 import { parseResumeContent } from "@/server/utils/resume-parser";
 import { aiJsonCompletion } from "@/server/ai/core/client";
 import { logError } from "@/server/utils/logger";
-
-export type ATSResultData = {
-  score: number;
-  matchedKeywords: string[];
-  missingKeywords: string[];
-  weakKeywords: string[];
-  sectionScores: {
-    skills: number;
-    experience: number;
-    summary: number;
-  };
-};
+import { ATSResult } from "@/server/types/score.types";
 
 // ==============================
 // TECH SYNONYMS
@@ -55,7 +44,7 @@ Never extract generic words, company names, or filler phrases.
 Return valid JSON only.`;
 
 async function extractJobSkillsWithAI(
-  jobDescription: string
+  jobDescription: string,
 ): Promise<string[]> {
   if (!jobDescription || jobDescription.trim().length < 20) return [];
 
@@ -80,7 +69,7 @@ Rules:
   const result = await aiJsonCompletion<{ skills: string[] }>(
     SKILL_EXTRACTION_SYSTEM,
     userPrompt,
-    { temperature: 0.1 }
+    { temperature: 0.1 },
   );
 
   return result?.skills ?? [];
@@ -91,18 +80,77 @@ Rules:
 // ==============================
 
 const KNOWN_TECH_SKILLS = new Set([
-  "javascript", "typescript", "python", "java", "c++", "c#", "ruby", "go",
-  "rust", "php", "swift", "kotlin", "scala", "r",
-  "react", "vue", "angular", "svelte", "next.js", "nuxt", "gatsby",
-  "node.js", "express", "fastapi", "django", "flask", "spring", "laravel",
-  "postgresql", "mysql", "mongodb", "redis", "sqlite", "oracle", "cassandra",
-  "aws", "gcp", "azure", "docker", "kubernetes", "terraform", "ansible",
-  "git", "github", "gitlab", "jira", "figma", "linux",
-  "graphql", "rest", "grpc", "websocket", "microservices",
-  "machine learning", "deep learning", "tensorflow", "pytorch", "pandas",
-  "sql", "nosql", "prisma", "mongoose", "sequelize",
-  "tailwind", "css", "html", "sass",
-  "communication", "teamwork", "leadership", "problem-solving",
+  "javascript",
+  "typescript",
+  "python",
+  "java",
+  "c++",
+  "c#",
+  "ruby",
+  "go",
+  "rust",
+  "php",
+  "swift",
+  "kotlin",
+  "scala",
+  "r",
+  "react",
+  "vue",
+  "angular",
+  "svelte",
+  "next.js",
+  "nuxt",
+  "gatsby",
+  "node.js",
+  "express",
+  "fastapi",
+  "django",
+  "flask",
+  "spring",
+  "laravel",
+  "postgresql",
+  "mysql",
+  "mongodb",
+  "redis",
+  "sqlite",
+  "oracle",
+  "cassandra",
+  "aws",
+  "gcp",
+  "azure",
+  "docker",
+  "kubernetes",
+  "terraform",
+  "ansible",
+  "git",
+  "github",
+  "gitlab",
+  "jira",
+  "figma",
+  "linux",
+  "graphql",
+  "rest",
+  "grpc",
+  "websocket",
+  "microservices",
+  "machine learning",
+  "deep learning",
+  "tensorflow",
+  "pytorch",
+  "pandas",
+  "sql",
+  "nosql",
+  "prisma",
+  "mongoose",
+  "sequelize",
+  "tailwind",
+  "css",
+  "html",
+  "sass",
+  "communication",
+  "teamwork",
+  "leadership",
+  "problem-solving",
 ]);
 
 function extractSkillsFromText(text: string): string[] {
@@ -124,11 +172,9 @@ function extractSkillsFromText(text: string): string[] {
 
 export async function calculateATSAsync(
   resumeContent: unknown,
-  jobDescription: string
-): Promise<ATSResultData> {
-  const resume = parseResumeContent(resumeContent);
-
-  const empty: ATSResultData = {
+  jobDescription: string,
+): Promise<ATSResult> {
+  const empty: ATSResult = {
     score: 0,
     matchedKeywords: [],
     missingKeywords: [],
@@ -165,88 +211,25 @@ export async function calculateATSAsync(
     };
   }
 
-  // Normalize job skills
-  const normalizedJobSkills = [...new Set(jobSkills.map(canonicalize))];
-
-  // Extract resume skills from all sections
-  const resumeSkillKeywords = new Set(
-    resume.skills.map(canonicalize)
-  );
-
-  const resumeExperienceText = resume.experience
-    .map((e) => `${e.role} ${e.company} ${e.description}`)
-    .join(" ")
-    .toLowerCase();
-
-  const resumeSummaryText = resume.summary.toLowerCase();
-
-  const matched: string[] = [];
-  const missing: string[] = [];
-  const weak: string[] = [];
-
-  for (const skill of normalizedJobSkills) {
-    const inSkills = resumeSkillKeywords.has(skill);
-    const inExperience = resumeExperienceText.includes(skill);
-    const inSummary = resumeSummaryText.includes(skill);
-
-    if (inSkills) {
-      matched.push(skill);
-    } else if (inExperience || inSummary) {
-      weak.push(skill);
-      matched.push(skill); // Count as matched but weak
-    } else {
-      missing.push(skill);
-    }
-  }
-
-  const total = matched.length + missing.length;
-  const score = total === 0 ? 50 : Math.round((matched.length / total) * 100);
-
-  // Section scores
-  const skillScore =
-    normalizedJobSkills.length === 0
-      ? 50
-      : Math.round(
-          (normalizedJobSkills.filter((k) => resumeSkillKeywords.has(k)).length /
-            normalizedJobSkills.length) *
-            100
-        );
-
-  const expMatches = normalizedJobSkills.filter((k) =>
-    resumeExperienceText.includes(k)
-  ).length;
-  const expScore =
-    normalizedJobSkills.length === 0
-      ? 50
-      : Math.round((expMatches / normalizedJobSkills.length) * 100);
-
-  const summaryMatches = normalizedJobSkills.filter((k) =>
-    resumeSummaryText.includes(k)
-  ).length;
-  const summaryScore =
-    normalizedJobSkills.length === 0
-      ? 50
-      : Math.round((summaryMatches / normalizedJobSkills.length) * 100);
-
-  return {
-    score,
-    matchedKeywords: matched,
-    missingKeywords: missing,
-    weakKeywords: weak,
-    sectionScores: {
-      skills: skillScore,
-      experience: expScore,
-      summary: summaryScore,
-    },
-  };
+  return calculateATS(resumeContent, {
+    jobDescription,
+    jobSkills,
+  });
 }
 
 // Sync version for places that can't await (kept for backward compat)
 export function calculateATS(
   resumeContent: unknown,
-  jobDescription: string
-): ATSResultData {
+
+  options: {
+    jobDescription?: string;
+
+    jobSkills?: string[];
+  },
+): ATSResult {
   const resume = parseResumeContent(resumeContent);
+
+  const jobDescription = options.jobDescription || "";
 
   if (!jobDescription || jobDescription.trim().length < 10) {
     return {
@@ -259,7 +242,9 @@ export function calculateATS(
   }
 
   // Use rule-based only for sync version
-  const jobSkills = extractSkillsFromText(jobDescription);
+  const jobSkills = options.jobSkills?.length
+    ? options.jobSkills
+    : extractSkillsFromText(options.jobDescription ?? "");
 
   if (jobSkills.length === 0) {
     return {

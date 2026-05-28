@@ -17,7 +17,7 @@ export async function tailorResumeWithAI(
   userId?: string
 ): Promise<{ content: ResumeContent; improvements: string[] }> {
   const parsed = parseResumeContent(resumeContent);
-  const ats = calculateATS(parsed, jobDescription);
+  const ats = calculateATS(parsed, {jobDescription});
 
   const userPrompt = `Tailor this resume to better match the job description.
 

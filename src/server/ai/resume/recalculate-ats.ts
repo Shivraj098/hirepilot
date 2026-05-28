@@ -21,7 +21,7 @@ export async function recalculateATS(
 
   const ats = calculateATS(
     version.content,
-    version.job.description
+    {jobDescription: version.job.description}
   );
 
   await prisma.aTSResult.upsert({

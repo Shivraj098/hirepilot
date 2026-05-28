@@ -43,7 +43,9 @@ export async function analyzeJobMatch(
   jobDescription: string,
   userId?: string,
 ): Promise<JobMatchResult | null> {
-  const ats = calculateATS(resumeContent, jobDescription);
+  const ats = calculateATS(resumeContent, {
+    jobDescription,
+  });
 
   const matchScore = ats.score;
 

@@ -31,7 +31,7 @@ export function calculateSkillGap(
   );
 
   // Use ATS engine for consistent keyword extraction
-  const ats = calculateATS(resumeContent, jobDescription);
+  const ats = calculateATS(resumeContent, { jobDescription });
 
   const jobFrequencyMap: Record<string, number> = {};
   for (const kw of ats.matchedKeywords.concat(ats.missingKeywords)) {
