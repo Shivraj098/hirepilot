@@ -67,7 +67,7 @@ STRICT RULES:
 - suggestedContent for "summary" must be a string
 - suggestedContent for "experience" must be an array of experience objects`;
 
-  const result = await runAI
+  const result = await runAI<
     {
       section: keyof ResumeContent;
       suggestedContent: Prisma.InputJsonValue;

@@ -1,21 +1,26 @@
-"use client";
+import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
-import { motion } from "framer-motion";
-import { stagger } from "@/lib/motion";
+interface SectionProps {
+  children: ReactNode;
+  className?: string;
+  gap?: "sm" | "md" | "lg";
+}
+
+const gaps = {
+  sm: "space-y-3",
+  md: "space-y-4",
+  lg: "space-y-6",
+};
 
 export default function Section({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+  className,
+  gap = "md",
+}: SectionProps) {
   return (
-    <motion.div
-      variants={stagger}
-      initial="hidden"
-      animate="show"
-      className="space-y-8"
-    >
+    <div className={cn(gaps[gap], className)}>
       {children}
-    </motion.div>
+    </div>
   );
 }

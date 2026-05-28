@@ -1,25 +1,15 @@
 "use server";
-
+import { Difficulty, Priority } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-
 import { generateInterviewPrep } from "@/server/ai/interview/interview-generator";
-import { generateAIInterviewPrep } from "@/server/ai/interview/interview-ai";
 import { generateSectionSuggestions } from "@/server/ai/resume/suggestion-engine";
 import { calculateSkillGap } from "@/server/ai/skills/skill-gap";
 import { tailorResumeWithAI } from "@/server/ai/resume/tailor";
 import { recalculateResumePipeline } from "../orchestrators/resume-orchestrator";
-import type {
-  ResumeContent,
-  
-} from "@/server/types/resume.types";
-
-import type { InterviewPrepResult } from "@/server/ai/interview/interview-generator";
-
-/* =========================================================
-   CREATE TAILORED VERSION WITH AI
-========================================================= */
+import type { ResumeContent } from "@/server/types/resume.types";
+import type { InterviewPrepResult } from "@/server/types/ai.types";
 
 export async function createTailoredVersionWithAI(
   resumeId: string,
@@ -28,8 +18,7 @@ export async function createTailoredVersionWithAI(
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
 
-  // ---------- BASE VERSION ----------
-
+  // STEP 1 — Get base version and job
   const baseVersion = await prisma.resumeVersion.findFirst({
     where: {
       resumeId,
@@ -39,25 +28,20 @@ export async function createTailoredVersionWithAI(
   });
 
   const job = await prisma.job.findFirst({
-    where: {
-      id: jobId,
-      userId: user.id,
-    },
+    where: { id: jobId, userId: user.id },
   });
 
-  if (!baseVersion || !job) {
-    throw new Error("Invalid data");
-  }
+  if (!baseVersion || !job) throw new Error("Invalid data");
 
-  // ---------- AI TAILOR ----------
-
-  const tailoredContent = await tailorResumeWithAI(
+  // STEP 2 — AI tailor resume
+  const tailored = await tailorResumeWithAI(
     baseVersion.content as ResumeContent,
     job.description,
   );
 
-  // ---------- CREATE VERSION ----------
+  const tailoredContent = tailored.content;
 
+  // STEP 3 — Create new tailored version in DB
   const newVersion = await prisma.resumeVersion.create({
     data: {
       resumeId,
@@ -65,25 +49,21 @@ export async function createTailoredVersionWithAI(
       jobId,
       content: tailoredContent,
       versionType: "TAILORED",
-
       parentId: baseVersion.id,
       createdBy: "AI",
       label: `AI Tailored for ${job.title}`,
     },
   });
 
-  // ---------- ATS ----------
-
+  // STEP 4 — Recalculate ATS pipeline
   await recalculateResumePipeline(newVersion.id, user.id);
 
-  // ---------- SKILL GAP ----------
-
+  // STEP 5 — Skill gap analysis
   const skillGap = calculateSkillGap(tailoredContent, job.description);
 
-  // ---------- SUGGESTIONS ----------
-
+  // STEP 6 — AI suggestions
   const suggestions = await generateSectionSuggestions(
-    tailoredContent ,
+    tailoredContent,
     skillGap,
     job.description,
   );
@@ -100,35 +80,21 @@ export async function createTailoredVersionWithAI(
     });
   }
 
-  // ---------- SKILL GAP DB ----------
-
-  await prisma.skillGap.deleteMany({
-    where: { jobId: job.id },
-  });
+  // STEP 7 — Save skill gaps
+  await prisma.skillGap.deleteMany({ where: { jobId: job.id } });
 
   const gaps = skillGap.missingSkills.map((skill) => {
     const frequency = skillGap.jobFrequencyMap?.[skill] ?? 1;
-
-    let priority: "HIGH" | "MEDIUM" | "LOW";
-
-    if (frequency >= 2) {
-      priority = "HIGH";
-    } else if (frequency === 1) {
-      priority = "MEDIUM";
-    } else {
-      priority = "LOW";
-    }
+    const priority: "HIGH" | "MEDIUM" | "LOW" =
+      frequency >= 2 ? "HIGH" : frequency === 1 ? "MEDIUM" : "LOW";
 
     return {
       jobId: job.id,
       skill,
-      priority,
+      priority: priority as Priority,
       estimatedTime:
-        priority === "HIGH"
-          ? "2-4 weeks"
-          : priority === "MEDIUM"
-            ? "1-2 weeks"
-            : "Few days",
+        priority === "HIGH" ? "2-4 weeks" :
+        priority === "MEDIUM" ? "1-2 weeks" : "Few days",
       reasoning:
         frequency >= 2
           ? "Skill appears multiple times in job description"
@@ -137,108 +103,78 @@ export async function createTailoredVersionWithAI(
   });
 
   if (gaps.length > 0) {
-    await prisma.skillGap.createMany({
-      data: gaps,
-    });
+    await prisma.skillGap.createMany({ data: gaps });
   }
 
-  // ---------- INTERVIEW ----------
+  // STEP 8 — Generate interview prep
+  await prisma.interviewPrep.deleteMany({ where: { jobId: job.id } });
 
-  await prisma.interviewPrep.deleteMany({
-    where: { jobId: job.id },
+  const interview: InterviewPrepResult = await generateInterviewPrep(
+    job.title,
+    job.description,
+    skillGap.matchedSkills,
+  );
+
+  await prisma.interviewPrep.create({
+    data: {
+      jobId: job.id,
+      type: "FULL",
+      questions: interview.questions,
+      starDrafts: interview.starDrafts,
+      technicalTopics: interview.technicalTopics,
+      difficulty: (interview.difficulty as Difficulty) ?? Difficulty.MEDIUM,
+      category: interview.category,
+    },
   });
 
-  let interview: InterviewPrepResult | null = null;
-
-  try {
-    interview = await generateAIInterviewPrep(
-      job.title,
-      job.description,
-      skillGap.matchedSkills,
-    );
-  } catch {
-    interview = await generateInterviewPrep(
-      job.title,
-      job.description,
-      skillGap.matchedSkills,
-    );
-  }
-
-  if (interview) {
-    await prisma.interviewPrep.create({
-      data: {
-        jobId: job.id,
-        type: "FULL",
-        questions: interview.questions,
-        starDrafts: interview.starDrafts,
-        technicalTopics: interview.technicalTopics,
-      },
-    });
-  }
+  revalidatePath(`/dashboard/resumes/${resumeId}`);
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  revalidatePath("/dashboard");
 
   return newVersion;
 }
-
-/* =========================================================
-   REGENERATE INTERVIEW
-========================================================= */
 
 export async function regenerateInterviewPrep(jobId: string) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("Unauthorized");
 
-  const job = await prisma.job.findUnique({
-    where: { id: jobId },
-    include: {
-      versions: {
-        orderBy: { createdAt: "desc" },
-      },
-    },
+  const job = await prisma.job.findFirst({
+    where: { id: jobId, userId: user.id },
   });
 
   if (!job) throw new Error("Job not found");
 
-  const latestVersion = job.versions[0];
+  // Fetch latest version separately — avoids Prisma Accelerate include type issue
+  const latestVersion = await prisma.resumeVersion.findFirst({
+    where: { jobId },
+    orderBy: { createdAt: "desc" },
+  });
 
-  if (!latestVersion) throw new Error("No version");
+  if (!latestVersion) throw new Error("No version found");
 
   const ats = await prisma.aTSResult.findFirst({
-    where: {
-      resumeVersionId: latestVersion.id,
+    where: { resumeVersionId: latestVersion.id },
+  });
+
+  const interview: InterviewPrepResult = await generateInterviewPrep(
+    job.title,
+    job.description,
+    (ats?.matchedKeywords as string[]) ?? [],
+  );
+
+  await prisma.interviewPrep.deleteMany({ where: { jobId } });
+
+  await prisma.interviewPrep.create({
+    data: {
+      jobId,
+      type: "FULL",
+      questions: interview.questions,
+      starDrafts: interview.starDrafts,
+      technicalTopics: interview.technicalTopics,
+      difficulty: (interview.difficulty as Difficulty) ?? Difficulty.MEDIUM,
+      category: interview.category,
     },
   });
-
-  let interview: InterviewPrepResult | null = null;
-
-  try {
-    interview = await generateAIInterviewPrep(
-      job.title,
-      job.description,
-      (ats?.matchedKeywords as string[]) ?? [],
-    );
-  } catch {
-    interview = await generateInterviewPrep(
-      job.title,
-      job.description,
-      (ats?.matchedKeywords as string[]) ?? [],
-    );
-  }
-
-  await prisma.interviewPrep.deleteMany({
-    where: { jobId },
-  });
-
-  if (interview) {
-    await prisma.interviewPrep.create({
-      data: {
-        jobId,
-        type: "FULL",
-        questions: interview.questions,
-        starDrafts: interview.starDrafts,
-        technicalTopics: interview.technicalTopics,
-      },
-    });
-  }
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

@@ -1,9 +1,14 @@
 "use server";
-import type { ResumeIntelligence } from "../types/ai.types";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { Prisma, VersionType, CreatedBy } from "@prisma/client";
+import {
+  Prisma,
+  VersionType,
+  CreatedBy,
+  Priority,
+  Difficulty,
+} from "@prisma/client";
 import { analyzeJob } from "@/server/ai/job/job-intelligence";
 import { analyzeJobMatch } from "@/server/ai/job/job-match";
 import { calculateResumeScore } from "../ai/resume/resume-score";
@@ -25,7 +30,9 @@ import {
   EducationItem,
 } from "@/server/types/resume.types";
 import { z } from "zod";
-
+import { generateInterviewPrep } from "../ai/interview/interview-generator";
+import { generateSkillGaps } from "../ai/skills/skillgap-generator";
+import { calculateATSAsync } from "../ai/resume/ats-engine";
 
 // ==============================
 // VALIDATORS
@@ -62,20 +69,11 @@ async function getAuthAndVersion(resumeId: string) {
   return { user, baseVersion, content };
 }
 
-async function createNewVersion(
-  resumeId: string,
-  userId: string,
-  parentId: string,
-  content: ResumeContent,
-) {
-  return prisma.resumeVersion.create({
+async function updateVersionContent(versionId: string, content: ResumeContent) {
+  return prisma.resumeVersion.update({
+    where: { id: versionId },
     data: {
-      resumeId,
-      userId,
       content: content as Prisma.InputJsonValue,
-      parentId,
-      versionType: VersionType.BASE,
-      createdBy: CreatedBy.USER,
     },
   });
 }
@@ -125,9 +123,9 @@ export async function updateResumeSummary(resumeId: string, summary: string) {
   const parsed = summarySchema.safeParse(summary);
   if (!parsed.success) throw new Error("Invalid summary");
 
-  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
+  const { baseVersion, content } = await getAuthAndVersion(resumeId);
 
-  await createNewVersion(resumeId, user.id, baseVersion.id, {
+  await updateVersionContent(baseVersion.id, {
     ...content,
     summary: parsed.data,
   });
@@ -142,9 +140,9 @@ export async function addExperience(
   const parsed = experienceSchema.safeParse(experienceItem);
   if (!parsed.success) throw new Error("Invalid experience data");
 
-  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
+  const { baseVersion, content } = await getAuthAndVersion(resumeId);
 
-  await createNewVersion(resumeId, user.id, baseVersion.id, {
+  await updateVersionContent(baseVersion.id, {
     ...content,
     experience: [
       ...(Array.isArray(content.experience) ? content.experience : []),
@@ -156,7 +154,7 @@ export async function addExperience(
 }
 
 export async function removeExperience(resumeId: string, index: number) {
-  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
+  const { baseVersion, content } = await getAuthAndVersion(resumeId);
 
   const currentExperience = Array.isArray(content.experience)
     ? content.experience
@@ -166,7 +164,7 @@ export async function removeExperience(resumeId: string, index: number) {
     throw new Error("Invalid index");
   }
 
-  await createNewVersion(resumeId, user.id, baseVersion.id, {
+  await updateVersionContent(baseVersion.id, {
     ...content,
     experience: currentExperience.filter((_, i) => i !== index),
   });
@@ -178,15 +176,19 @@ export async function addSkill(resumeId: string, skill: string) {
   const parsed = skillSchema.safeParse(skill);
   if (!parsed.success) throw new Error("Invalid skill");
 
-  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
+  const { baseVersion, content } = await getAuthAndVersion(resumeId);
 
   const currentSkills = Array.isArray(content.skills) ? content.skills : [];
 
-  if (currentSkills.includes(parsed.data)) {
+  if (
+    currentSkills
+      .map((s) => s.toLowerCase())
+      .includes(parsed.data.toLowerCase())
+  ) {
     throw new Error("Skill already exists");
   }
 
-  await createNewVersion(resumeId, user.id, baseVersion.id, {
+  await updateVersionContent(baseVersion.id, {
     ...content,
     skills: [...currentSkills, parsed.data],
   });
@@ -195,7 +197,7 @@ export async function addSkill(resumeId: string, skill: string) {
 }
 
 export async function removeSkill(resumeId: string, index: number) {
-  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
+  const { baseVersion, content } = await getAuthAndVersion(resumeId);
 
   const currentSkills = Array.isArray(content.skills) ? content.skills : [];
 
@@ -203,7 +205,7 @@ export async function removeSkill(resumeId: string, index: number) {
     throw new Error("Invalid index");
   }
 
-  await createNewVersion(resumeId, user.id, baseVersion.id, {
+  await updateVersionContent(baseVersion.id, {
     ...content,
     skills: currentSkills.filter((_, i) => i !== index),
   });
@@ -218,9 +220,9 @@ export async function addEducation(
   const parsed = educationSchema.safeParse(educationItem);
   if (!parsed.success) throw new Error("Invalid education data");
 
-  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
+  const { baseVersion, content } = await getAuthAndVersion(resumeId);
 
-  await createNewVersion(resumeId, user.id, baseVersion.id, {
+  await updateVersionContent(baseVersion.id, {
     ...content,
     education: [
       ...(Array.isArray(content.education) ? content.education : []),
@@ -232,7 +234,7 @@ export async function addEducation(
 }
 
 export async function removeEducation(resumeId: string, index: number) {
-  const { user, baseVersion, content } = await getAuthAndVersion(resumeId);
+  const { baseVersion, content } = await getAuthAndVersion(resumeId);
 
   const currentEducation = Array.isArray(content.education)
     ? content.education
@@ -242,7 +244,7 @@ export async function removeEducation(resumeId: string, index: number) {
     throw new Error("Invalid index");
   }
 
-  await createNewVersion(resumeId, user.id, baseVersion.id, {
+  await updateVersionContent(baseVersion.id, {
     ...content,
     education: currentEducation.filter((_, i) => i !== index),
   });
@@ -316,7 +318,7 @@ export async function analyzeResume(resumeId: string) {
   const baseVersion = await getLatestVersion(resumeId, user.id);
   if (!baseVersion) throw new Error("Base version not found");
 
-  const result  = await analyzeResumeProfile(baseVersion.content);
+  const result = await analyzeResumeProfile(baseVersion.content);
 
   if (result) {
     await saveResumeAnalysis({
@@ -351,9 +353,31 @@ export async function analyzeJobForUser(jobId: string) {
 
   if (!job) throw new Error("Job not found");
 
-  const [result] = await Promise.all([analyzeJob(job.description)]);
+  // Get user's latest resume for matching
+// Replace the entire latestResume block with this:
+const latestResumeWithVersion = await prisma.resumeVersion.findFirst({
+  where: {
+    userId: user.id,
+    versionType: "BASE",
+  },
+  orderBy: { createdAt: "desc" },
+});
 
-  if (result) {
+const baseVersion = latestResumeWithVersion ?? null;
+  // Run all analyses in parallel
+  const [jobAnalysisResult, matchResult, atsResult] = await Promise.allSettled([
+    analyzeJob(job.description, user.id),
+    baseVersion
+      ? analyzeJobMatch(baseVersion.content, job.description, user.id)
+      : Promise.resolve(null),
+    baseVersion
+      ? calculateATSAsync(baseVersion.content, job.description)
+      : Promise.resolve(null),
+  ]);
+
+  // Save job analysis
+  if (jobAnalysisResult.status === "fulfilled" && jobAnalysisResult.value) {
+    const result = jobAnalysisResult.value;
     await saveJobAnalysis({
       jobId: job.id,
       userId: user.id,
@@ -366,15 +390,109 @@ export async function analyzeJobForUser(jobId: string) {
       secondarySkills:
         result.secondarySkills as unknown as Prisma.InputJsonValue,
     });
+  }
 
-    logActivity({
+  // Save match result
+  if (matchResult.status === "fulfilled" && matchResult.value && baseVersion) {
+    const result = matchResult.value;
+    await saveMatchResult({
+      resumeVersionId: baseVersion.id,
+      jobId: job.id,
       userId: user.id,
-      type: "JOB_ANALYZED",
-      message: "Job analyzed with AI",
+      matchScore: result.matchScore,
+      fitLevel: result.fitLevel,
+      shouldApply: result.shouldApply,
+      missingSkills: result.missingSkills as unknown as Prisma.InputJsonValue,
+      reason: result.reason,
     });
   }
 
-  return result;
+  // Save ATS and generate skill gaps
+  if (atsResult.status === "fulfilled" && atsResult.value && baseVersion) {
+    const ats = atsResult.value;
+
+    await prisma.aTSResult.upsert({
+      where: { resumeVersionId: baseVersion.id },
+      update: {
+        score: ats.score,
+        matchedKeywords: ats.matchedKeywords,
+        missingKeywords: ats.missingKeywords,
+        weakKeywords: ats.weakKeywords,
+      },
+      create: {
+        resumeVersionId: baseVersion.id,
+        score: ats.score,
+        matchedKeywords: ats.matchedKeywords,
+        missingKeywords: ats.missingKeywords,
+        weakKeywords: ats.weakKeywords,
+      },
+    });
+
+    // Generate skill gaps
+    const skillGap = {
+      matchedSkills: ats.matchedKeywords,
+      missingSkills: ats.missingKeywords,
+      matchPercentage: ats.score,
+      jobFrequencyMap: {} as Record<string, number>,
+    };
+
+    const gaps = await generateSkillGaps(job.description, skillGap);
+
+    if (gaps.length > 0) {
+      await prisma.$transaction([
+        prisma.skillGap.deleteMany({ where: { jobId: job.id } }),
+        prisma.skillGap.createMany({
+          data: gaps.map((g) => ({
+            jobId: job.id,
+            skill: g.skill,
+            priority: (g.priority as Priority) ?? Priority.MEDIUM,
+            estimatedTime: g.estimatedTime,
+            reasoning: g.reasoning,
+            difficulty: (g.difficulty as Difficulty) ?? Difficulty.MEDIUM,
+            learningLink: g.learningLink ?? null,
+          })),
+        }),
+      ]);
+    }
+
+    // Generate interview prep
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resumeSkills = Array.isArray((baseVersion.content as any)?.skills)
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (baseVersion.content as any).skills
+      : [];
+
+    const interviewPrep = await generateInterviewPrep(
+      job.title,
+      job.description,
+      resumeSkills,
+    );
+
+    if (interviewPrep) {
+      await prisma.interviewPrep.deleteMany({ where: { jobId: job.id } });
+      await prisma.interviewPrep.create({
+        data: {
+          jobId: job.id,
+          type: "FULL",
+          questions: interviewPrep.questions,
+          starDrafts: interviewPrep.starDrafts,
+          technicalTopics: interviewPrep.technicalTopics,
+          difficulty:
+            (interviewPrep.difficulty as Difficulty) ?? Difficulty.MEDIUM,
+          category: interviewPrep.category,
+        },
+      });
+    }
+  }
+
+  logActivity({
+    userId: user.id,
+    type: "JOB_ANALYZED",
+    message: `Job analyzed: ${job.title}`,
+  });
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  revalidatePath("/dashboard");
 }
 
 export async function getJobMatch(resumeId: string, jobId: string) {

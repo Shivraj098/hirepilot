@@ -1,19 +1,21 @@
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { logError } from "@/server/utils/logger";
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY is not set");
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY is not set");
 }
 
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Initialize the Gemini client
+export const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
-export const AI_MODEL = "gpt-4o-mini";
+// Using the fast, cost-effective model perfect for heavy text processing
+export const AI_MODEL = "gemini-2.0-flash-lite";
 export const AI_TEMPERATURE = 0.2;
-export const AI_MAX_TOKENS = 2000;
+export const AI_MAX_TOKENS = 1200;
 export const AI_TIMEOUT_MS = 20000;
-export const AI_RETRIES = 2;
+export const AI_RETRIES = 1;
 
 // ==============================
 // TIMEOUT WRAPPER
@@ -23,11 +25,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
       () => reject(new Error(`AI request timed out after ${ms}ms`)),
-      ms
+      ms,
     );
     promise
-      .then((v) => { clearTimeout(timer); resolve(v); })
-      .catch((e) => { clearTimeout(timer); reject(e); });
+      .then((v) => {
+        clearTimeout(timer);
+        resolve(v);
+      })
+      .catch((e) => {
+        clearTimeout(timer);
+        reject(e);
+      });
   });
 }
 
@@ -57,8 +65,15 @@ export function safeJsonParse<T>(text: string): T | null {
 // ==============================
 
 function isNonRetryable(err: unknown): boolean {
-  if (err instanceof OpenAI.APIError) {
-    return [400, 401, 403, 404, 422].includes(err.status);
+  // Check standard HTTP error statuses returned by the fetch API inside the SDK
+  // We exclude 429 (Rate Limit) so the system will attempt to retry it
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "status" in err &&
+    typeof (err as Record<string, unknown>).status === "number"
+  ) {
+    return [400, 401, 403, 404].includes((err as { status: number }).status);
   }
   return false;
 }
@@ -73,20 +88,22 @@ async function callAI(
   options?: {
     temperature?: number;
     maxTokens?: number;
-  }
+  },
 ) {
   return withTimeout(
-    openai.chat.completions.create({
+    ai.models.generateContent({
       model: AI_MODEL,
-      temperature: options?.temperature ?? AI_TEMPERATURE,
-      max_tokens: options?.maxTokens ?? AI_MAX_TOKENS,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: options?.temperature ?? AI_TEMPERATURE,
+        // Note: Gemini uses maxOutputTokens instead of max_tokens
+        maxOutputTokens: options?.maxTokens ?? AI_MAX_TOKENS,
+        // Forces the model to return a JSON-compatible string
+        responseMimeType: "application/json",
+      },
     }),
-    AI_TIMEOUT_MS
+    AI_TIMEOUT_MS,
   );
 }
 
@@ -96,16 +113,13 @@ async function callAI(
 
 export async function aiTextCompletion(
   prompt: string,
-  options?: { temperature?: number; maxTokens?: number }
+  options?: { temperature?: number; maxTokens?: number },
 ): Promise<string> {
   for (let i = 0; i <= AI_RETRIES; i++) {
     try {
-      const res = await callAI(
-        "You are a helpful assistant.",
-        prompt,
-        options
-      );
-      return res.choices[0]?.message?.content ?? "";
+      const res = await callAI("You are a helpful assistant.", prompt, options);
+      // Gemini simplifies the response object significantly
+      return res.text ?? "";
     } catch (err) {
       if (isNonRetryable(err)) {
         logError("AI TEXT NON-RETRYABLE", err);
@@ -125,12 +139,13 @@ export async function aiTextCompletion(
 export async function aiJsonCompletion<T>(
   systemPrompt: string,
   userPrompt: string,
-  options?: { temperature?: number; maxTokens?: number }
+  options?: { temperature?: number; maxTokens?: number },
 ): Promise<T | null> {
   for (let i = 0; i <= AI_RETRIES; i++) {
     try {
       const res = await callAI(systemPrompt, userPrompt, options);
-      const text = res.choices[0]?.message?.content ?? "";
+      const text = res.text ?? "";
+
       if (!text) return null;
       const parsed = safeJsonParse<T>(text);
       if (parsed) return parsed;

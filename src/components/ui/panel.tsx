@@ -1,38 +1,42 @@
-"use client";
-import { motion } from "framer-motion";
-import { scaleIn, hoverLift } from "@/lib/motion";
-import clsx from "clsx";
+import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+
+interface PanelProps {
+  children: ReactNode;
+  className?: string;
+  variant?: "default" | "ai" | "ghost";
+  padding?: "sm" | "md" | "lg" | "none";
+}
+
+const variants = {
+  default: "bg-card border border-border",
+  ai: "ai-gradient border border-[--ai-border]",
+  ghost: "bg-transparent border border-dashed border-border",
+};
+
+const paddings = {
+  none: "",
+  sm: "p-4",
+  md: "p-5",
+  lg: "p-6",
+};
 
 export default function Panel({
   children,
   className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+  variant = "default",
+  padding = "md",
+}: PanelProps) {
   return (
-    <motion.div
-      variants={scaleIn}
-      initial="hidden"
-      animate="show"
-      {...hoverLift}
-      className={clsx(
-  `
-  rounded-2xl
-  border
-  border-border/70
-  hover:border-foreground/20
-  bg-card
-  p-6
-  shadow-sm
-  transition
-  hover:shadow-md
-  
-  `,
-  className
-)}
+    <div
+      className={cn(
+        "rounded-2xl",
+        variants[variant],
+        paddings[padding],
+        className
+      )}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

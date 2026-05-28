@@ -1,9 +1,7 @@
 import Badge from "@/components/ui/badge";
 import Progress from "@/components/ui/progress";
 import PanelHeader from "@/components/ui/panel-header";
-import StatRow from "@/components/ui/stat-row";
 import Timeline from "@/components/ui/timeline";
-import Tag from "@/components/ui/tag";
 import EmptyState from "@/components/ui/empty-state";
 import PageHeader from "@/components/ui/page-header";
 import Tabs from "@/components/ui/tabs";
@@ -28,6 +26,8 @@ import {
   removeExperience,
 } from "@/server/actions/resume.actions";
 import FormWithToast from "@/components/ui/form-with-toast";
+import RunAnalysisButton from "@/components/resume/run-analysis-button";
+import { Sparkles } from "lucide-react";
 
 interface Props {
   params: Promise<{
@@ -68,6 +68,7 @@ export default async function ResumePage({ params }: Props) {
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
   });
+  
 
   const baseVersion = resume.versions.find((v) => v.versionType === "BASE");
 
@@ -78,6 +79,8 @@ export default async function ResumePage({ params }: Props) {
   const tailoredVersions = resume.versions.filter(
     (v) => v.versionType === "TAILORED",
   );
+
+  
 
   const content = (baseVersion.content ?? {}) as {
     summary?: string;
@@ -94,11 +97,19 @@ export default async function ResumePage({ params }: Props) {
       duration: string;
     }>;
   };
-  const atsResult = baseVersion
-    ? await prisma.aTSResult.findUnique({
+  
+  const [atsResult, resumeAnalysis] = await Promise.all([
+  baseVersion
+    ? prisma.aTSResult.findUnique({
         where: { resumeVersionId: baseVersion.id },
       })
-    : null;
+    : null,
+  baseVersion
+    ? prisma.resumeAnalysis.findUnique({
+        where: { resumeVersionId: baseVersion.id },
+      })
+    : null,
+]);
 
   const experience = content.experience ?? [];
   const skills = content.skills ?? [];
@@ -413,39 +424,113 @@ export default async function ResumePage({ params }: Props) {
             ),
           },
           {
-            label: "ATS",
-            value: "ats",
-            content: (
-              <Section>
-                <Panel>
-                  <PanelHeader title="ATS Score" />
-                  <StatRow
-                    label="Score"
-                    value={
-                      atsResult ? `${atsResult.score}%` : "Not analyzed yet"
-                    }
-                  />
-                  {atsResult && <Progress value={atsResult.score} />}
-                  {!atsResult && (
-                    <EmptyState
-                      title="No ATS analysis yet"
-                      description="Run AI analysis to see your ATS score"
-                    />
-                  )}
-                </Panel>
+  label: "ATS",
+  value: "ats",
+  content: (
+    <Section>
+      <Panel>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold">ATS Score</h2>
+          <RunAnalysisButton resumeId={resumeId} />
+        </div>
 
-                <Panel>
-                  <PanelHeader title="Skills" />
+        {atsResult ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Score</span>
+              <span className="text-2xl font-bold">{atsResult.score}%</span>
+            </div>
+            <Progress value={atsResult.score} showLabel size="lg" />
 
-                  <div className="flex flex-wrap gap-2">
-                    {skills.map((s, i) => (
-                      <Tag key={i}>{s}</Tag>
+            {/* Section scores */}
+            {resumeAnalysis && (
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                {resumeAnalysis.profileScore !== null && (
+                  <div className="p-3 rounded-xl bg-muted/50 border border-border">
+                    <p className="text-xs text-muted-foreground mb-1">Profile Score</p>
+                    <p className="text-lg font-semibold">{resumeAnalysis.profileScore}%</p>
+                  </div>
+                )}
+                {resumeAnalysis.contentScore !== null && (
+                  <div className="p-3 rounded-xl bg-muted/50 border border-border">
+                    <p className="text-xs text-muted-foreground mb-1">Content Score</p>
+                    <p className="text-lg font-semibold">{resumeAnalysis.contentScore}%</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Matched keywords */}
+            {Array.isArray(atsResult.matchedKeywords) &&
+              (atsResult.matchedKeywords as string[]).length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2 text-[--success]">
+                    ✓ Matched Keywords
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(atsResult.matchedKeywords as string[]).map((kw) => (
+                      <Badge key={kw} variant="success">{kw}</Badge>
                     ))}
                   </div>
-                </Panel>
-              </Section>
-            ),
-          },
+                </div>
+              )}
+
+            {/* Missing keywords */}
+            {Array.isArray(atsResult.missingKeywords) &&
+              (atsResult.missingKeywords as string[]).length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2 text-destructive">
+                    ✗ Missing Keywords
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(atsResult.missingKeywords as string[]).map((kw) => (
+                      <Badge key={kw} variant="danger">{kw}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {/* AI Strengths & Weaknesses */}
+            {resumeAnalysis?.strengths && (
+              <div>
+                <p className="text-sm font-medium mb-2">Strengths</p>
+                <ul className="space-y-1">
+                  {(resumeAnalysis.strengths as string[]).map((s, i) => (
+                    <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                      <span className="text-[--success] shrink-0">→</span>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {resumeAnalysis?.weaknesses && (
+              <div>
+                <p className="text-sm font-medium mb-2">Areas to Improve</p>
+                <ul className="space-y-1">
+                  {(resumeAnalysis.weaknesses as string[]).map((w, i) => (
+                    <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                      <span className="text-[--warning] shrink-0">→</span>
+                      {w}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <EmptyState
+            icon={<Sparkles className="w-6 h-6" />}
+            title="No ATS analysis yet"
+            description="Run AI analysis to see your ATS score, matched keywords, and improvement suggestions."
+            action={<RunAnalysisButton resumeId={resumeId} />}
+          />
+        )}
+      </Panel>
+    </Section>
+  ),
+},
           {
             label: "Skills",
             value: "skills",

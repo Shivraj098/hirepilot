@@ -12,7 +12,7 @@ import Button from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import Timeline from "@/components/ui/timeline";
 import StatRow from "@/components/ui/stat-row";
-
+import { Sparkles } from "lucide-react";
 export default async function DashboardHome() {
   const user = await getCurrentUser();
 
@@ -68,17 +68,26 @@ export default async function DashboardHome() {
         description="Overview of your resumes, jobs, and AI optimization"
       />
 
-      <div className="flex gap-3 pt-2">
-        <Link href="/dashboard/resumes/new">
-          <Button>Upload Resume</Button>
-        </Link>
-        <Link href="/dashboard/resumes">
-          <Button variant="secondary">Resumes</Button>
-        </Link>
-        <Link href="/dashboard/jobs">
-          <Button variant="secondary">Jobs</Button>
-        </Link>
-      </div>
+    <div className="flex flex-wrap gap-2 pt-1">
+  <Link href="/dashboard/resumes/new">
+    <Button
+      icon={<Sparkles className="w-4 h-4" />}
+      size="md"
+    >
+      Upload Resume
+    </Button>
+  </Link>
+  <Link href="/dashboard/resumes">
+    <Button variant="secondary" size="md">
+      My Resumes
+    </Button>
+  </Link>
+  <Link href="/dashboard/jobs">
+    <Button variant="secondary" size="md">
+      Track Jobs
+    </Button>
+  </Link>
+</div>
 
       <Section>
         <div className="grid gap-4 md:grid-cols-4">

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
-import { calculateATS } from "@/server/ai/resume/ats-engine";
+import { calculateATSAsync } from "@/server/ai/resume/ats-engine";
 import { calculateResumeScore } from "@/server/ai/resume/resume-score";
 import { generateSkillGaps } from "@/server/ai/skills/skillgap-generator";
 import { analyzeResumeHealth } from "@/server/ai/resume/resume-health";
@@ -22,13 +22,13 @@ export async function recalculateResumePipeline(
   const job = version.job;
 
   // ==============================
-  // STEP 1 — ATS (computed once, reused)
+  // STEP 1 — ATS (async AI-powered)
   // ==============================
 
-  let atsData: ReturnType<typeof calculateATS> | null = null;
+  let atsData: Awaited<ReturnType<typeof calculateATSAsync>> | null = null;
 
   try {
-    atsData = calculateATS(content, job?.description ?? "");
+    atsData = await calculateATSAsync(content, job?.description ?? "");
 
     await prisma.aTSResult.upsert({
       where: { resumeVersionId },
@@ -55,16 +55,13 @@ export async function recalculateResumePipeline(
   // ==============================
 
   await Promise.allSettled([
-    // Score
     calculateResumeScore(content, job?.description, userId)
       .then(async (score) => {
         if (!score) return;
-
         await prisma.resumeVersion.update({
           where: { id: resumeVersionId },
           data: { scoreSnapshot: score.profileScore ?? 0 },
         });
-
         await prisma.scoreHistory.create({
           data: {
             resumeVersionId,
@@ -76,7 +73,6 @@ export async function recalculateResumePipeline(
       })
       .catch((e) => logError("Score pipeline step failed", e)),
 
-    // Health check — result stored on version notes for now
     Promise.resolve()
       .then(() => analyzeResumeHealth(content))
       .catch((e) => logError("Health pipeline step failed", e)),
@@ -89,7 +85,6 @@ export async function recalculateResumePipeline(
   if (!job?.description || !job.id) return;
 
   try {
-    // Reuse atsData computed in Step 1
     const skillGap = atsData
       ? {
           matchedSkills: atsData.matchedKeywords,

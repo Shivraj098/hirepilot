@@ -1,8 +1,6 @@
-import { ThemeProvider } from "@/components/layout/theme-provider";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ToastProvider } from "@/components/ui/toast-context";
-import { SessionProvider } from "next-auth/react";
+import Providers from "@/components/layout/providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,13 +35,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SessionProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              {children}
-            </ToastProvider>
-          </ThemeProvider>
-        </SessionProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

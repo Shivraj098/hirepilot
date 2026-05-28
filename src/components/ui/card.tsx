@@ -1,22 +1,35 @@
+import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
-import clsx from "clsx";
+
+interface CardProps {
+  children: ReactNode;
+  className?: string;
+  hover?: boolean;
+  onClick?: () => void;
+}
 
 export default function Card({
   children,
   className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+  hover = false,
+  onClick,
+}: CardProps) {
+  const isInteractive = !!onClick || hover;
+
   return (
     <div
-      className={clsx(
+      onClick={onClick}
+      className={cn(
         "rounded-2xl border border-border bg-card text-card-foreground",
-        "shadow-sm",
-        "transition-all duration-200",
-        "hover:shadow-md",
+        isInteractive && [
+          "cursor-pointer",
+          "transition-all duration-150",
+          "hover:border-border/80 hover:bg-card/80",
+        ],
         className
       )}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
     >
       {children}
     </div>

@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 
 export default function PageContainer({
   children,
@@ -10,9 +10,8 @@ export default function PageContainer({
 }) {
   return (
     <div
-      className={clsx(
-        "px-8 py-8",
-        "max-w-7xl mx-auto w-full",
+      className={cn(
+        "px-6 py-6 max-w-7xl mx-auto w-full",
         className
       )}
     >

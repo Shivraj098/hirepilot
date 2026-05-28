@@ -1,55 +1,115 @@
 "use client";
 
+import { forwardRef } from "react";
 import { motion, HTMLMotionProps } from "framer-motion";
-import { ReactNode } from "react";
-import clsx from "clsx";
 import { Loader2 } from "lucide-react";
-type ButtonProps = HTMLMotionProps<"button"> & {
-  children: ReactNode;
-  variant?: "primary" | "secondary" | "ghost";
+import { cn } from "@/lib/utils";
+
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "ai";
+type Size = "sm" | "md" | "lg";
+
+type ButtonProps = Omit<HTMLMotionProps<"button">, "children"> & {
+  children?: React.ReactNode;
+  variant?: Variant;
+  size?: Size;
   loading?: boolean;
+  loadingText?: string;
+  icon?: React.ReactNode;
+  iconRight?: React.ReactNode;
 };
 
-export default function Button({
-  children,
-  className,
-  variant = "primary",
+const variants: Record<Variant, string> = {
+  primary: [
+    "bg-primary text-primary-foreground",
+    "hover:opacity-90",
+    "shadow-sm",
+  ].join(" "),
 
-  loading = false,
-  ...props
-}: ButtonProps) {
-  const base =
-    "inline-flex items-center justify-center h-10 px-4 rounded-xl text-sm font-medium shadow-sm " +
-    "transition-all duration-200 " +
-    "focus:outline-none focus:ring-2 focus:ring-ring/40 " +
-    "disabled:opacity-50 disabled:pointer-events-none";
+  secondary: [
+    "bg-secondary text-secondary-foreground",
+    "border border-border",
+    "hover:bg-muted",
+  ].join(" "),
 
-  const variants = {
-    primary:
-      "bg-primary text-primary-foreground shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.97]",
+  ghost: [
+    "text-muted-foreground",
+    "hover:bg-muted hover:text-foreground",
+  ].join(" "),
 
-    secondary:
-      "bg-secondary text-secondary-foreground border border-border hover:bg-muted active:scale-[0.97]",
+  danger: [
+    "bg-destructive/10 text-destructive",
+    "border border-destructive/20",
+    "hover:bg-destructive/15",
+  ].join(" "),
 
-    ghost:
-      "bg-transparent text-foreground hover:bg-muted/60 active:scale-[0.97]",
-  };
+  ai: [
+    "ai-gradient border border-[--ai-border]",
+    "text-[--ai] font-medium",
+    "hover:border-[--ai]/50",
+  ].join(" "),
+};
 
-  return (
-    <motion.button
-      whileTap={{ scale: 0.97 }}
-      whileHover={{ scale: 1.01 }}
-      className={clsx(base, variants[variant], className)}
-      {...props}
-    >
-      {loading ? (
-        <span className="flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Loading
-        </span>
-      ) : (
-        children
-      )}
-    </motion.button>
-  );
-}
+const sizes: Record<Size, string> = {
+  sm: "h-8 px-3 text-xs rounded-lg gap-1.5",
+  md: "h-9 px-4 text-sm rounded-xl gap-2",
+  lg: "h-11 px-6 text-sm rounded-xl gap-2",
+};
+
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      children,
+      variant = "primary",
+      size = "md",
+      loading = false,
+      loadingText,
+      icon,
+      iconRight,
+      className,
+      disabled,
+      ...props
+    },
+    ref
+  ) => {
+    const isDisabled = disabled || loading;
+
+    return (
+      <motion.button
+        ref={ref}
+        whileTap={{ scale: isDisabled ? 1 : 0.97 }}
+        className={cn(
+          "relative inline-flex items-center justify-center font-medium",
+          "transition-all duration-150",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "disabled:opacity-50 disabled:pointer-events-none",
+          "select-none",
+          variants[variant],
+          sizes[size],
+          className
+        )}
+        disabled={isDisabled}
+        {...props}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+            <span>{loadingText ?? "Loading..."}</span>
+          </>
+        ) : (
+          <>
+            {icon && (
+              <span className="shrink-0">{icon}</span>
+            )}
+            {children}
+            {iconRight && (
+              <span className="shrink-0">{iconRight}</span>
+            )}
+          </>
+        )}
+      </motion.button>
+    );
+  }
+);
+
+Button.displayName = "Button";
+export default Button;

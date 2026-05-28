@@ -1,3 +1,5 @@
+import { JobFitLevel } from "../ai/job/job-match";
+
 export type JobIntelligence = {
   roleCategory: string;
   requiredLevel: string;
@@ -8,26 +10,40 @@ export type JobIntelligence = {
 };
 
 export type JobMatchResult = {
-  matchScore: number;
-  fitLevel: string;
-  shouldApply: boolean;
-  reason: string;
-  missingSkills: string[];
-  improvementHint: string;
+  evaluation: {
+    matchScore: number;
+
+    fitLevel: JobFitLevel;
+
+    shouldApply: boolean;
+  };
+
+  intelligence: {
+    reason: string;
+
+    missingSkills: string[];
+
+    improvementHint: string;
+
+    strengths: string[];
+  };
 };
 
 export type ResumeIntelligence = {
-  profileScore: number;
-  atsScore: number;
   clarityScore: number;
-  impactScore: number;
-  experienceScore: number;
+
   careerLevel: string;
+
   strengths: string[];
+
   weaknesses: string[];
+
   missingSkills: string[];
+
   improvementTips: string[];
+
   recommendedRoles: string[];
+
   summaryFeedback: string;
 };
 
