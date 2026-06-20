@@ -113,6 +113,8 @@ export async function createTailoredVersionWithAI(
     job.title,
     job.description,
     skillGap.matchedSkills,
+    skillGap.missingSkills,
+    skillGap.matchPercentage,
   );
 
   await prisma.interviewPrep.create({
@@ -122,6 +124,7 @@ export async function createTailoredVersionWithAI(
       questions: interview.questions,
       starDrafts: interview.starDrafts,
       technicalTopics: interview.technicalTopics,
+      focusAreas:interview.focusAreas,
       difficulty: (interview.difficulty as Difficulty) ?? Difficulty.MEDIUM,
       category: interview.category,
     },
@@ -145,21 +148,39 @@ export async function regenerateInterviewPrep(jobId: string) {
   if (!job) throw new Error("Job not found");
 
   // Fetch latest version separately — avoids Prisma Accelerate include type issue
-  const latestVersion = await prisma.resumeVersion.findFirst({
-    where: { jobId },
-    orderBy: { createdAt: "desc" },
+const latestVersion =
+  await prisma.resumeVersion.findFirst({
+    where: {
+      jobId,
+      userId: user.id,
+    },
+
+    orderBy: {
+      createdAt: "desc",
+    },
   });
 
   if (!latestVersion) throw new Error("No version found");
 
-  const ats = await prisma.aTSResult.findFirst({
-    where: { resumeVersionId: latestVersion.id },
-  });
+ 
 
-  const interview: InterviewPrepResult = await generateInterviewPrep(
-    job.title,
+const skillGap =
+  calculateSkillGap(
+    latestVersion.content,
     job.description,
-    (ats?.matchedKeywords as string[]) ?? [],
+  );
+
+const interview =
+  await generateInterviewPrep(
+    job.title,
+
+    job.description,
+
+    skillGap.matchedSkills,
+
+    skillGap.missingSkills,
+
+    skillGap.matchPercentage,
   );
 
   await prisma.interviewPrep.deleteMany({ where: { jobId } });
@@ -171,6 +192,8 @@ export async function regenerateInterviewPrep(jobId: string) {
       questions: interview.questions,
       starDrafts: interview.starDrafts,
       technicalTopics: interview.technicalTopics,
+      focusAreas:
+  interview.focusAreas,
       difficulty: (interview.difficulty as Difficulty) ?? Difficulty.MEDIUM,
       category: interview.category,
     },

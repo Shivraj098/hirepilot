@@ -152,7 +152,7 @@ export async function generateSectionSuggestions(
   skillGap: SkillGapResult,
   jobDescription: string
 ): Promise<SectionSuggestion[]> {
-  const atsData = calculateATS(resumeContent, jobDescription);
+  const atsData = calculateATS(resumeContent, {jobDescription});
 
   const ai = await generateAISuggestions(
     resumeContent,

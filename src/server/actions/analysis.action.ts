@@ -1,6 +1,5 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth";
@@ -9,113 +8,11 @@ import { prisma } from "@/lib/db/prisma";
 import { assertResumeOwner } from "@/server/auth/permissions";
 
 import { calculateATSAsync } from "@/server/ai/resume/ats-engine";
-import { analyzeResumeProfile } from "@/server/ai/resume/resume-intelligence";
-import { calculateResumeScore } from "@/server/ai/resume/resume-score";
 
 import { getLatestVersion } from "@/server/features/version/version.service";
 import { logActivity } from "@/server/features/activity/activity.service";
-
-import { logError } from "@/server/utils/logger";
-
-// ======================================================
-// TYPES
-// ======================================================
-
-type ImprovementImpact = "HIGH" | "MEDIUM" | "LOW";
-
-interface ATSAnalysisDTO {
-  score: number;
-
-  matchedKeywords: string[];
-
-  missingKeywords: string[];
-
-  weakKeywords: string[];
-}
-
-interface ResumeScoringDTO {
-  profileScore: number;
-
-  atsScore: number;
-
-  contentScore: number;
-
-  clarityScore: number;
-
-  experienceScore: number;
-
-  skillsScore: number;
-}
-
-interface ResumeIntelligenceDTO {
-  strengths: string[];
-
-  weaknesses: string[];
-
-  improvements: ResumeImprovement[];
-
-  summary: string;
-}
-
-type ImprovementCategory =
-  | "ATS"
-  | "Keywords"
-  | "Impact"
-  | "Formatting"
-  | "Skills"
-  | "Content";
-
-export interface ResumeImprovement {
-  category: ImprovementCategory;
-  issue: string;
-  fix: string;
-  impact: ImprovementImpact;
-}
-
-export interface ResumeAnalysisResult {
-  success: boolean;
-
-  scoring: ResumeScoringDTO;
-
-  ats: ATSAnalysisDTO;
-
-  intelligence: ResumeIntelligenceDTO;
-
-  analysisEngineVersion: string;
-}
-
-// ======================================================
-// CONSTANTS
-// ======================================================
-
-const ANALYSIS_ENGINE_VERSION = "resume-analysis-v3";
-
-// ======================================================
-// HELPERS
-// ======================================================
-
-function normalizeScore(score: unknown): number {
-  if (typeof score !== "number" || Number.isNaN(score)) {
-    return 0;
-  }
-
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
-
-function safeArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter(
-    (item): item is string =>
-      typeof item === "string" && item.trim().length > 0,
-  );
-}
-
-// ======================================================
-// AI RECOMMENDATION LAYER
-// ======================================================
+import { runResumeAnalysisPipeline } from "../orchestrators/resume-orchestrator";
+import { ResumeAnalysisResult } from "../types/analysis.types";
 
 // ======================================================
 // MAIN ANALYSIS ACTION
@@ -157,64 +54,19 @@ export async function runResumeAnalysis(
   if (!baseVersion.content) {
     throw new Error("Resume content is empty");
   }
+  const analysisResult = await runResumeAnalysisPipeline({
+    resumeId,
 
-  // ======================================================
-  // ATS ANALYSIS
-  // IMPORTANT:
-  // General ATS analysis should NOT pass empty string
-  // because original ATS engine returns zero scores.
-  // ======================================================
+    resumeVersionId: baseVersion.id,
 
-  const atsResult = await calculateATSAsync(
-    baseVersion.content,
-    "General software engineering resume evaluation",
-  );
+    userId: user.id,
 
-  // ======================================================
-  // PARALLEL ANALYSIS
-  // ======================================================
-
-  const [scoreResult, intelligenceResult] = await Promise.allSettled([
-    calculateResumeScore(baseVersion.content, undefined),
-
-    analyzeResumeProfile(baseVersion.content, user.id),
-  ]);
-
-  // ======================================================
-  // SCORE VALIDATION
-  // ======================================================
-
-  if (scoreResult.status !== "fulfilled" || !scoreResult.value) {
-    logError(
-      "Resume scoring failed",
-      scoreResult.status === "rejected"
-        ? scoreResult.reason
-        : "No score returned",
-    );
-
-    throw new Error("Resume scoring failed. Please try again.");
-  }
-
-  const scoring = scoreResult.value;
-
-  const intelligence =
-    intelligenceResult.status === "fulfilled" ? intelligenceResult.value : null;
+    content: baseVersion.content,
+  });
 
   // ======================================================
   // UNIFIED SCORE NORMALIZATION
   // ======================================================
-
-  const profileScore = normalizeScore(scoring.profileScore);
-
-  const atsScore = normalizeScore(scoring.atsScore);
-
-  const contentScore = normalizeScore(scoring.contentScore);
-
-  const clarityScore = normalizeScore(intelligence?.clarityScore);
-
-  const experienceScore = normalizeScore(scoring.experienceScore);
-
-  const skillsScore = normalizeScore(scoring.skillScore);
 
   // ======================================================
   // AI RECOMMENDATIONS
@@ -224,183 +76,9 @@ export async function runResumeAnalysis(
   // BUILD FINAL NORMALIZED DTO
   // ======================================================
 
-  const analysisResult: ResumeAnalysisResult = {
-  success: true,
-
-  scoring: {
-    profileScore,
-    atsScore,
-    contentScore,
-    clarityScore,
-    experienceScore,
-    skillsScore,
-  },
-
-  ats: {
-    score: atsScore,
-
-    matchedKeywords:
-      safeArray(atsResult.matchedKeywords),
-
-    missingKeywords:
-      safeArray(atsResult.missingKeywords),
-
-    weakKeywords:
-      safeArray(atsResult.weakKeywords),
-  },
-
-  intelligence: {
-    strengths:
-      safeArray(intelligence?.strengths),
-
-    weaknesses:
-      safeArray(intelligence?.weaknesses),
-
-    improvements:
-      safeArray(
-        intelligence?.improvementTips
-      ).map((tip) => ({
-        category: "Content",
-        issue: tip,
-        fix: tip,
-        impact: "MEDIUM",
-      })),
-
-    summary:
-      intelligence?.summaryFeedback ?? "",
-  },
-
-  analysisEngineVersion:
-    ANALYSIS_ENGINE_VERSION,
-};
-
   // ======================================================
   // DATABASE TRANSACTION
   // ======================================================
-
-  await prisma.$transaction(async (tx) => {
-    // ====================================================
-    // ATS RESULT
-    // ====================================================
-
-    await tx.aTSResult.upsert({
-      where: {
-        resumeVersionId: baseVersion.id,
-      },
-
-      update: {
-        score: analysisResult.scoring.atsScore,
-
-        matchedKeywords: analysisResult.matchedKeywords,
-
-        missingKeywords: analysisResult.missingKeywords,
-
-        weakKeywords: analysisResult.weakKeywords,
-      },
-
-      create: {
-        resumeVersionId: baseVersion.id,
-
-        score: analysisResult.atsScore,
-
-        matchedKeywords: analysisResult.matchedKeywords,
-
-        missingKeywords: analysisResult.missingKeywords,
-
-        weakKeywords: analysisResult.weakKeywords,
-      },
-    });
-
-    // ====================================================
-    // RESUME ANALYSIS
-    // ====================================================
-
-    await tx.resumeAnalysis.upsert({
-      where: {
-        resumeVersionId: baseVersion.id,
-      },
-
-      update: {
-        score: analysisResult.profileScore,
-
-        profileScore: analysisResult.profileScore,
-
-        atsScore: analysisResult.atsScore,
-
-        contentScore: analysisResult.contentScore,
-
-        skillScore: analysisResult.skillsScore,
-
-        experienceScore: analysisResult.experienceScore,
-
-        strengths: analysisResult.strengths as Prisma.InputJsonValue,
-
-        weaknesses: analysisResult.weaknesses as Prisma.InputJsonValue,
-
-        recommendedSkills:
-          analysisResult.missingKeywords as Prisma.InputJsonValue,
-
-        summary: analysisResult.summary,
-      },
-
-      create: {
-        resumeVersionId: baseVersion.id,
-
-        userId: user.id,
-
-        score: analysisResult.profileScore,
-
-        profileScore: analysisResult.profileScore,
-
-        atsScore: analysisResult.atsScore,
-
-        contentScore: analysisResult.contentScore,
-
-        skillScore: analysisResult.skillsScore,
-
-        experienceScore: analysisResult.experienceScore,
-
-        strengths: analysisResult.strengths as Prisma.InputJsonValue,
-
-        weaknesses: analysisResult.weaknesses as Prisma.InputJsonValue,
-
-        recommendedSkills:
-          analysisResult.missingKeywords as Prisma.InputJsonValue,
-
-        summary: analysisResult.summary,
-      },
-    });
-
-    // ====================================================
-    // SCORE HISTORY
-    // ====================================================
-
-    await tx.scoreHistory.create({
-      data: {
-        resumeVersionId: baseVersion.id,
-
-        userId: user.id,
-
-        score: analysisResult.profileScore,
-
-        atsScore: analysisResult.atsScore,
-      },
-    });
-
-    // ====================================================
-    // SNAPSHOT UPDATE
-    // ====================================================
-
-    await tx.resumeVersion.update({
-      where: {
-        id: baseVersion.id,
-      },
-
-      data: {
-        scoreSnapshot: analysisResult.profileScore,
-      },
-    });
-  });
 
   // ======================================================
   // ACTIVITY LOG
@@ -422,9 +100,7 @@ export async function runResumeAnalysis(
 
   // ======================================================
   // RETURN FRONTEND-READY DTO
-  // ======================================================
-
-  return analysisResult;
+  return analysisResult; // ======================================================
 }
 
 // ======================================================

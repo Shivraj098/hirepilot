@@ -48,8 +48,9 @@ export function safeJsonParse<T>(text: string): T | null {
     return JSON.parse(text) as T;
   } catch {
     // Try to extract JSON object or array from text
-    const objectMatch = text.match(/\{[\s\S]*\}/);
-    const arrayMatch = text.match(/\[[\s\S]*\]/);
+    const objectMatch = text.match(/\{[\s\S]*?\}/);
+
+    const arrayMatch = text.match(/\[[\s\S]*?\]/);
     const match = objectMatch ?? arrayMatch;
     if (!match) return null;
     try {

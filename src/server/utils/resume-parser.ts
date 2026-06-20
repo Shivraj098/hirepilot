@@ -1,3 +1,5 @@
+import { canonicalizeSkill } from "../ai/resume/skill-normalizer";
+
 type ResumeExperience = {
   company: string;
   role: string;
@@ -25,7 +27,7 @@ normalize skill
 */
 
 function normalizeSkill(skill: string): string {
-  return skill.trim().toLowerCase();
+  return canonicalizeSkill(skill);
 }
 
 /*
@@ -56,39 +58,33 @@ parse resume content
 ====================================
 */
 
-export function parseResumeContent(
-  content: unknown
-): ParsedResumeContent {
+export function parseResumeContent(content: unknown): ParsedResumeContent {
   const obj = (content ?? {}) as Record<string, unknown>;
 
   const summary = safeString(obj.summary);
 
   const skillsRaw = safeArray<string>(obj.skills);
 
-  const skills = skillsRaw
-    .map(normalizeSkill)
-    .filter((s) => s.length > 0);
+  const skills = skillsRaw.map(normalizeSkill).filter((s) => s.length > 0);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const experienceRaw = safeArray<any>(obj.experience);
 
-  const experience: ResumeExperience[] =
-    experienceRaw.map((exp) => ({
-      company: safeString(exp.company),
-      role: safeString(exp.role),
-      duration: safeString(exp.duration),
-      description: safeString(exp.description),
-    }));
+  const experience: ResumeExperience[] = experienceRaw.map((exp) => ({
+    company: safeString(exp.company),
+    role: safeString(exp.role),
+    duration: safeString(exp.duration),
+    description: safeString(exp.description),
+  }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const educationRaw = safeArray<any>(obj.education);
 
-  const education: ResumeEducation[] =
-    educationRaw.map((edu) => ({
-      institution: safeString(edu.institution),
-      degree: safeString(edu.degree),
-      duration: safeString(edu.duration),
-    }));
+  const education: ResumeEducation[] = educationRaw.map((edu) => ({
+    institution: safeString(edu.institution),
+    degree: safeString(edu.degree),
+    duration: safeString(edu.duration),
+  }));
 
   return {
     summary,

@@ -1,8 +1,8 @@
-import { parseResumeContent } from "@/server/utils/resume-parser";
 import {
   MIN_SUMMARY_LENGTH,
   MIN_SKILLS_COUNT,
 } from "@/server/config/constants";
+import { buildResumeContext } from "./resume-context";
 export type ResumeHealth = {
   missingSummary: boolean;
 
@@ -24,8 +24,13 @@ function hasNumbers(text: string) {
 }
 
 export function analyzeResumeHealth(resumeContent: unknown): ResumeHealth {
-  const resume = parseResumeContent(resumeContent);
+const context =
+  buildResumeContext(
+    resumeContent,
+  );
 
+const resume =
+  context.parsed;
   const warnings: string[] = [];
 
   const missingSummary = !resume.summary;

@@ -30,8 +30,6 @@ export type JobMatchResult = {
 };
 
 export type ResumeIntelligence = {
-  clarityScore: number;
-
   careerLevel: string;
 
   strengths: string[];
@@ -39,8 +37,6 @@ export type ResumeIntelligence = {
   weaknesses: string[];
 
   missingSkills: string[];
-
-  improvementTips: string[];
 
   recommendedRoles: string[];
 
@@ -65,9 +61,15 @@ export type GeneratedGap = {
 
 export type InterviewPrepResult = {
   questions: string[];
+
   technicalTopics: string[];
+
   starDrafts: string[];
+
+  focusAreas: string[];
+
   difficulty: string;
+
   category: string;
 };
 

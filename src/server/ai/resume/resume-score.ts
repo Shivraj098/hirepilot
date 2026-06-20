@@ -3,6 +3,8 @@ import { parseResumeContent } from "@/server/utils/resume-parser";
 
 import { ResumeScoreResult } from "@/server/types/score.types";
 import { z } from "zod"; // ✅ Added for validation
+import { canonicalizeSkill } from "./skill-normalizer";
+import { buildResumeContext } from "./resume-context";
 
 // ======================================================
 // TYPES
@@ -19,14 +21,12 @@ interface ParsedResume {
   }>;
 
   education: Array<{
-    degree?: string;
-    school?: string;
-  }>;
+  degree: string;
+  institution: string;
+  duration: string;
+}>;
 
-  projects: Array<{
-    title?: string;
-    description?: string;
-  }>;
+  
 }
 
 // ✅ Zod schema for runtime validation
@@ -50,21 +50,14 @@ const ResumeSchema = z.object({
       }),
     )
     .default([]),
-  projects: z
-    .array(
-      z.object({
-        title: z.string().optional(),
-        description: z.string().optional(),
-      }),
-    )
-    .default([]),
+ 
 });
 
 // ======================================================
 // CONSTANTS
 // ======================================================
 
-const DEFAULT_ATS_SCORE = 70;
+const DEFAULT_ATS_SCORE = 50;
 
 const ACTION_VERBS = [
   "built",
@@ -107,14 +100,28 @@ function calculateWeightedScore(scores: {
   skillScore: number;
   experienceScore: number;
   atsScore: number;
-}): number {
+  completenessScore: number;
+}) {
   return clampScore(
-    scores.contentScore * 0.3 +
-      scores.skillScore * 0.25 +
-      scores.experienceScore * 0.3 +
-      scores.atsScore * 0.15,
+    scores.contentScore * 0.25 +
+    scores.skillScore * 0.20 +
+    scores.experienceScore * 0.25 +
+    scores.atsScore * 0.20 +
+    scores.completenessScore * 0.10
   );
 }
+
+const completenessScore =
+  calculateCompleteness(resume);
+
+const profileScore =
+  calculateWeightedScore({
+    contentScore,
+    skillScore,
+    experienceScore,
+    atsScore,
+    completenessScore,
+  });
 
 // ======================================================
 // CONTENT SCORE
@@ -122,6 +129,14 @@ function calculateWeightedScore(scores: {
 
 function calculateContentScore(resume: ParsedResume): number {
   let score = 0;
+  const summaryWords =
+  resume.summary
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+if (summaryWords >= 25) {
+  score += 10;
+}
 
   if (resume.summary.length >= 50) {
     score += 15;
@@ -139,9 +154,7 @@ function calculateContentScore(resume: ParsedResume): number {
     score += 20;
   }
 
-  if (resume.projects.length >= 1) {
-    score += 15;
-  }
+
 
   if (resume.education.length >= 1) {
     score += 10;
@@ -166,30 +179,62 @@ function calculateContentScore(resume: ParsedResume): number {
 // SKILL SCORE
 // ======================================================
 
-function calculateSkillScore(resume: ParsedResume): number {
-  const totalSkills = resume.skills.length;
 
-  if (totalSkills >= 15) {
-    return 95;
-  }
+function calculateCompleteness(
+  resume: ParsedResume
+): number {
+  let score = 0;
 
-  if (totalSkills >= 12) {
-    return 85;
-  }
+  if (resume.summary.length > 0)
+    score += 25;
 
-  if (totalSkills >= 8) {
-    return 75;
-  }
+  if (resume.skills.length > 0)
+    score += 25;
 
-  if (totalSkills >= 5) {
-    return 65;
-  }
+  if (resume.experience.length > 0)
+    score += 25;
 
-  if (totalSkills >= 3) {
-    return 50;
-  }
+  if (resume.education.length > 0)
+    score += 25;
 
-  return 30;
+  return score;
+}
+function calculateSkillScore(
+  resume: ParsedResume
+): number {
+  const skills = resume.skills.map(
+    canonicalizeSkill
+  );
+
+  const modernSkills = [
+    "react",
+    "next.js",
+    "typescript",
+    "node.js",
+    "postgresql",
+    "mongodb",
+    "docker",
+    "aws",
+    "prisma",
+    "graphql",
+    "kubernetes",
+  ];
+
+  const matchedModernSkills =
+    modernSkills.filter((skill) =>
+      skills.includes(skill)
+    ).length;
+
+  let score = 30;
+
+  score += Math.min(
+    skills.length * 3,
+    30,
+  );
+
+  score += matchedModernSkills * 4;
+
+  return clampScore(score);
 }
 
 // ======================================================
@@ -213,6 +258,19 @@ function calculateExperienceScore(resume: ParsedResume): number {
     if (description.length >= 200) {
       score += 10;
     }
+    const hasRole =
+  exp.role.trim().length > 0;
+
+if (hasRole) {
+  score += 5;
+}
+
+const hasCompany =
+  exp.company.trim().length > 0;
+
+if (hasCompany) {
+  score += 5;
+}
 
     if (METRIC_REGEX.test(description)) {
       score += 20;
@@ -268,11 +326,7 @@ function generateDeterministicTips(params: {
     );
   }
 
-  if (params.resume.projects.length === 0) {
-    tips.push(
-      "Add project experience to demonstrate practical technical implementation skills.",
-    );
-  }
+  
 
   if (params.resume.skills.length < 5) {
     tips.push(
@@ -292,11 +346,18 @@ export async function calculateResumeScore(
   jobDescription?: string,
 ): Promise<ResumeScoreResult> {
   // ✅ Validation step added
-  const parsed = parseResumeContent(resumeContent);
-  const resume = ResumeSchema.parse(parsed) as ParsedResume;
+const context =
+  buildResumeContext(
+    resumeContent,
+  );
+
+const resume =
+  ResumeSchema.parse(
+    context.parsed,
+  ) as ParsedResume; 
 
   const ats = jobDescription
-    ? await calculateATS(resumeContent, jobDescription) // ensure async if needed
+    ?  calculateATS(resumeContent, {jobDescription}) // ensure async if needed
     : null;
 
   const atsScore = ats?.score ?? DEFAULT_ATS_SCORE;

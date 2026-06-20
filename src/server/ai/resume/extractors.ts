@@ -1,18 +1,6 @@
-export type ResumeContent = {
-  summary?: string;
-  experience?: {
-    company: string;
-    role: string;
-    duration: string;
-    description: string;
-  }[];
-  skills?: string[];
-  education?: {
-    institution: string;
-    degree: string;
-    duration: string;
-  }[];
-};
+import { canonicalizeSkill } from "./skill-normalizer";
+
+
 
 /*
 ====================================
@@ -84,11 +72,8 @@ extract resume skills
 ====================================
 */
 
-export function extractResumeSkills(
-  content: unknown
-): string[] {
-  if (!content || typeof content !== "object")
-    return [];
+export function extractResumeSkills(content: unknown): string[] {
+  if (!content || typeof content !== "object") return [];
 
   const data = content as {
     skills?: unknown[];
@@ -97,9 +82,7 @@ export function extractResumeSkills(
   if (!Array.isArray(data.skills)) return [];
 
   return data.skills
-    .map((skill) =>
-      normalize(String(skill))
-    )
+    .map((skill) => canonicalizeSkill(String(skill)))
     .filter(Boolean);
 }
 
@@ -109,9 +92,7 @@ extract job keywords
 ====================================
 */
 
-export function extractJobKeywords(
-  description: string
-): string[] {
+export function extractJobKeywords(description: string): string[] {
   if (!description) return [];
 
   const text = normalize(description);

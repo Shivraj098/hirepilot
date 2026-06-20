@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/db/prisma";
+import { TxClient } from "@/server/types/db.types";
 import { Prisma } from "@prisma/client";
 
-export async function saveResumeAnalysis(data: {
+
+export async function saveResumeAnalysis(db: TxClient, 
+  data: {
   resumeVersionId: string;
   userId: string;
   score?: number;
@@ -15,7 +18,7 @@ export async function saveResumeAnalysis(data: {
   recommendedSkills?: Prisma.InputJsonValue;
   summary?: string;
 }) {
-  return prisma.resumeAnalysis.upsert({
+  return db.resumeAnalysis.upsert({
     where: { resumeVersionId: data.resumeVersionId },
     update: {
       score: data.score,
@@ -33,13 +36,14 @@ export async function saveResumeAnalysis(data: {
   });
 }
 
-export async function saveScoreHistory(data: {
+export async function saveScoreHistory(db: TxClient, 
+  data: {
   resumeVersionId: string;
   userId: string;
   score?: number;
   atsScore?: number;
 }) {
-  return prisma.scoreHistory.create({ data });
+  return db.scoreHistory.create({ data });
 }
 
 export async function saveMatchResult(data: {

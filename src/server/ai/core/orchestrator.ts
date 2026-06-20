@@ -2,6 +2,7 @@ import { aiJsonCompletion } from "./client";
 import { hashPrompt } from "./hash";
 import { getCachedAI, saveCachedAI } from "./ai-cache";
 import { logError } from "@/server/utils/logger";
+import { checkAIGuard } from "./ai-guard";
 
 export async function runAI<T>(
   systemPrompt: string,
@@ -11,7 +12,7 @@ export async function runAI<T>(
     userId?: string;
     ttlHours?: number;
     skipCache?: boolean;
-  }
+  },
 ): Promise<T | null> {
   // User-scoped cache key prevents cross-user cache hits
   const cacheInput = options?.userId
@@ -26,21 +27,17 @@ export async function runAI<T>(
       return cached.result as T;
     }
   }
+  if (options?.userId) {
+    await checkAIGuard(options.userId);
+  }
 
   try {
-    const result = await aiJsonCompletion<T>(
-      systemPrompt,
-      userPrompt,
-      { temperature: options?.temperature ?? 0.2 }
-    );
+    const result = await aiJsonCompletion<T>(systemPrompt, userPrompt, {
+      temperature: options?.temperature ?? 0.2,
+    });
 
     if (result) {
-      await saveCachedAI(
-        key,
-        userPrompt,
-        result,
-        options?.ttlHours
-      );
+      await saveCachedAI(key, "", result, options?.ttlHours);
     }
 
     return result;

@@ -1,38 +1,12 @@
-import { parseResumeContent } from "@/server/utils/resume-parser";
 import { aiJsonCompletion } from "@/server/ai/core/client";
 import { logError } from "@/server/utils/logger";
 import { ATSResult } from "@/server/types/score.types";
+import { canonicalizeSkill } from "./skill-normalizer";
+import { buildResumeContext } from "./resume-context";
 
 // ==============================
 // TECH SYNONYMS
 // ==============================
-
-const TECH_SYNONYMS: Record<string, string[]> = {
-  react: ["reactjs", "react.js"],
-  node: ["nodejs", "node.js"],
-  typescript: ["ts"],
-  javascript: ["js", "es6", "es2015"],
-  postgresql: ["postgres", "psql"],
-  "next.js": ["nextjs", "next"],
-  python: ["py"],
-  kubernetes: ["k8s"],
-};
-
-function buildSynonymMap(): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const [canonical, synonyms] of Object.entries(TECH_SYNONYMS)) {
-    for (const synonym of synonyms) {
-      map.set(synonym.toLowerCase(), canonical);
-    }
-  }
-  return map;
-}
-
-const synonymMap = buildSynonymMap();
-
-function canonicalize(word: string): string {
-  return synonymMap.get(word.toLowerCase()) ?? word.toLowerCase();
-}
 
 // ==============================
 // AI-POWERED JOB SKILL EXTRACTION
@@ -72,7 +46,7 @@ Rules:
     { temperature: 0.1 },
   );
 
-  return result?.skills ?? [];
+  return result?.skills?.map(canonicalizeSkill) ?? [];
 }
 
 // ==============================
@@ -227,8 +201,9 @@ export function calculateATS(
     jobSkills?: string[];
   },
 ): ATSResult {
-  const resume = parseResumeContent(resumeContent);
+  const context = buildResumeContext(resumeContent);
 
+  const resume = context.parsed;
   const jobDescription = options.jobDescription || "";
 
   if (!jobDescription || jobDescription.trim().length < 10) {
@@ -256,36 +231,82 @@ export function calculateATS(
     };
   }
 
-  const normalizedJobSkills = [...new Set(jobSkills.map(canonicalize))];
-  const resumeSkillKeywords = new Set(resume.skills.map(canonicalize));
+  const normalizedJobSkills = [...new Set(jobSkills.map(canonicalizeSkill))];
+  const resumeSkillKeywords = new Set(resume.skills.map(canonicalizeSkill));
   const resumeExpText = resume.experience
     .map((e) => `${e.role} ${e.description}`)
     .join(" ")
     .toLowerCase();
+
+  const resumeSummaryText = resume.summary.toLowerCase();
 
   const matched: string[] = [];
   const missing: string[] = [];
   const weak: string[] = [];
 
   for (const skill of normalizedJobSkills) {
-    if (resumeSkillKeywords.has(skill)) {
+    const inSkills = resumeSkillKeywords.has(skill);
+
+    const inExperience = resumeExpText.includes(skill);
+
+    const inSummary = resumeSummaryText.includes(skill);
+
+    if (inSkills) {
       matched.push(skill);
-    } else if (resumeExpText.includes(skill)) {
-      weak.push(skill);
-      matched.push(skill);
-    } else {
-      missing.push(skill);
+      continue;
     }
+
+    if (inExperience) {
+      matched.push(skill);
+      weak.push(skill);
+      continue;
+    }
+
+    if (inSummary) {
+      matched.push(skill);
+      weak.push(skill);
+      continue;
+    }
+
+    missing.push(skill);
   }
 
-  const total = matched.length + missing.length;
-  const score = total === 0 ? 50 : Math.round((matched.length / total) * 100);
+  const totalSkills = normalizedJobSkills.length;
 
+  const skillMatches = normalizedJobSkills.filter((skill) =>
+    resumeSkillKeywords.has(skill),
+  ).length;
+
+  const experienceMatches = normalizedJobSkills.filter((skill) =>
+    resumeExpText.includes(skill),
+  ).length;
+
+  const summaryMatches = normalizedJobSkills.filter((skill) =>
+    resumeSummaryText.includes(skill),
+  ).length;
+
+  const skillScore =
+    totalSkills === 0 ? 50 : Math.round((skillMatches / totalSkills) * 100);
+
+  const experienceScore =
+    totalSkills === 0
+      ? 50
+      : Math.round((experienceMatches / totalSkills) * 100);
+
+  const summaryScore =
+    totalSkills === 0 ? 50 : Math.round((summaryMatches / totalSkills) * 100);
+  const score = Math.round(
+    skillScore * 0.6 + experienceScore * 0.3 + summaryScore * 0.1,
+  );
   return {
     score,
     matchedKeywords: matched,
     missingKeywords: missing,
     weakKeywords: weak,
-    sectionScores: { skills: score, experience: score, summary: score },
+    sectionScores: {
+      skills: skillScore,
+      experience: experienceScore,
+      summary: summaryScore,
+    },
   };
 }

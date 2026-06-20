@@ -354,16 +354,16 @@ export async function analyzeJobForUser(jobId: string) {
   if (!job) throw new Error("Job not found");
 
   // Get user's latest resume for matching
-// Replace the entire latestResume block with this:
-const latestResumeWithVersion = await prisma.resumeVersion.findFirst({
-  where: {
-    userId: user.id,
-    versionType: "BASE",
-  },
-  orderBy: { createdAt: "desc" },
-});
+  // Replace the entire latestResume block with this:
+  const latestResumeWithVersion = await prisma.resumeVersion.findFirst({
+    where: {
+      userId: user.id,
+      versionType: "BASE",
+    },
+    orderBy: { createdAt: "desc" },
+  });
 
-const baseVersion = latestResumeWithVersion ?? null;
+  const baseVersion = latestResumeWithVersion ?? null;
   // Run all analyses in parallel
   const [jobAnalysisResult, matchResult, atsResult] = await Promise.allSettled([
     analyzeJob(job.description, user.id),
@@ -556,7 +556,6 @@ export async function getResumeScore(resumeId: string, jobId?: string) {
   const result = await calculateResumeScore(
     baseVersion.content,
     jobDescription,
-    user.id,
   );
 
   if (result) {

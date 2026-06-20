@@ -1,6 +1,7 @@
 import { runAI } from "@/server/ai/core/orchestrator";
 import { calculateATS } from "@/server/ai/resume/ats-engine";
 import { JobMatchResult } from "@/server/types/ai.types";
+import { buildJobContext } from "./job-context";
 
 const SYSTEM_PROMPT = `You are a senior technical recruiter who specializes in 
 evaluating candidate-job fit. You give honest, data-driven assessments.
@@ -43,9 +44,19 @@ export async function analyzeJobMatch(
   jobDescription: string,
   userId?: string,
 ): Promise<JobMatchResult | null> {
-  const ats = calculateATS(resumeContent, {
+ 
+  const context =
+  buildJobContext(
     jobDescription,
-  });
+  );
+  const ats =
+  calculateATS(
+    resumeContent,
+    {
+      jobDescription:
+        context.rawDescription,
+    },
+  );
 
   const matchScore = ats.score;
 
@@ -58,6 +69,8 @@ export async function analyzeJobMatch(
 ATS ANALYSIS:
 - Matched Skills: ${ats.matchedKeywords.slice(0, 15).join(", ")}
 - Missing Skills: ${ats.missingKeywords.slice(0, 15).join(", ")}
+- Deterministic Match Score: ${matchScore}
+- Fit Level: ${fitLevel}
 
 RESUME:
 ${JSON.stringify(resumeContent, null, 2)}

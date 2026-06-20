@@ -2,6 +2,9 @@ import { PrismaClient } from "@prisma/client";
 import { withAccelerate } from "@prisma/extension-accelerate";
 
 const prismaClientSingleton = () => {
+  console.log(
+  process.env.PRISMA_ACCELERATE_URL?.slice(0, 50)
+);
   return new PrismaClient({
     accelerateUrl: process.env.PRISMA_ACCELERATE_URL!,
     log:
